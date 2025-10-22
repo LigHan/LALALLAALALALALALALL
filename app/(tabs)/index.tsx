@@ -1,6 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { FlatList, Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 type WorkingHours = {
   label: string;
@@ -15,6 +24,15 @@ type Review = {
   date: string;
 };
 
+type Story = {
+  id: string;
+  userName: string;
+  avatar: string;
+  image: string;
+  text: string;
+  postId: string;
+};
+
 type Post = {
   id: string;
   user: string;
@@ -25,6 +43,41 @@ type Post = {
   workingHours: WorkingHours[];
   reviews: Review[];
 };
+
+const stories: Story[] = [
+  {
+    id: 's1',
+    userName: 'Moscow guides',
+    avatar: 'https://i.pravatar.cc/120?img=12',
+    image: 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?auto=format&fit=crop&w=800&q=80',
+    text: 'Новый маршрут вдоль Москвы-реки уже доступен. Захватывающие виды и уютные места по пути!',
+    postId: '1',
+  },
+  {
+    id: 's2',
+    userName: 'Urban explorer',
+    avatar: 'https://i.pravatar.cc/120?img=32',
+    image: 'https://images.unsplash.com/photo-1470123808288-1e59739bc221?auto=format&fit=crop&w=800&q=80',
+    text: 'Побывал в арт-кластере Хлебозавод — это настоящий город в городе. Делюсь атмосферой.',
+    postId: '2',
+  },
+  {
+    id: 's3',
+    userName: 'Coffee time',
+    avatar: 'https://i.pravatar.cc/120?img=56',
+    image: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=800&q=80',
+    text: 'Нашли кофейню с невероятными десертами и видом на Тверскую. Лайфхак для сладкоежек.',
+    postId: '2',
+  },
+  {
+    id: 's4',
+    userName: 'City walker',
+    avatar: 'https://i.pravatar.cc/120?img=14',
+    image: 'https://images.unsplash.com/photo-1529429617124-aee341f3b7a0?auto=format&fit=crop&w=800&q=80',
+    text: 'Вечерняя прогулка по Замоскворечью — тихие улицы, старинные дома и уютные лавочки.',
+    postId: '3',
+  },
+];
 
 const initialPosts: Post[] = [
   {
@@ -116,6 +169,9 @@ export default function FeedScreen() {
   const [isScheduleVisible, setScheduleVisible] = useState(false);
   const [reviewsPost, setReviewsPost] = useState<Post | null>(null);
   const [isReviewsVisible, setReviewsVisible] = useState(false);
+  const [activeStory, setActiveStory] = useState<Story | null>(null);
+  const [isStoryVisible, setStoryVisible] = useState(false);
+  const [storyLikes, setStoryLikes] = useState<Record<string, boolean>>({});
 
   const handleLike = (id: string) => {
     setPosts(prev =>
@@ -152,6 +208,27 @@ export default function FeedScreen() {
   const handleCloseReviews = () => {
     setReviewsVisible(false);
   };
+  const handleOpenStory = (story: Story) => {
+    setActiveStory(story);
+    setStoryVisible(true);
+  };
+  const handleCloseStory = () => {
+    setStoryVisible(false);
+  };
+  const handleOpenStoryDetails = (story: Story) => {
+    const relatedPost = posts.find(post => post.id === story.postId);
+    if (relatedPost) {
+      setStoryVisible(false);
+      setActivePost(relatedPost);
+      setScheduleVisible(true);
+    }
+  };
+  const toggleStoryLike = (storyId: string) => {
+    setStoryLikes(prev => ({
+      ...prev,
+      [storyId]: !prev[storyId],
+    }));
+  };
 
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
@@ -177,6 +254,18 @@ export default function FeedScreen() {
     };
   }, [isReviewsVisible, reviewsPost]);
 
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    if (!isStoryVisible && activeStory) {
+      timeout = setTimeout(() => setActiveStory(null), 220);
+    }
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [isStoryVisible, activeStory]);
+
   const renderFooter = () =>
     posts.length > 0 ? (
       <View style={styles.listFooter}>
@@ -192,6 +281,32 @@ export default function FeedScreen() {
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.storiesSection}>
+            <Text style={styles.storiesTitle}>Новинки</Text>
+            <FlatList
+              data={stories}
+              keyExtractor={story => story.id}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.storiesList}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.storyItem}
+                  onPress={() => handleOpenStory(item)}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.storyRing}>
+                    <Image source={{ uri: item.avatar }} style={styles.storyAvatar} />
+                  </View>
+                  <Text style={styles.storyName} numberOfLines={1}>
+                    {item.userName}
+                  </Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        }
         ListFooterComponent={renderFooter}
         renderItem={({ item }) => (
           <View style={styles.post}>
@@ -297,15 +412,93 @@ export default function FeedScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+      <Modal visible={isStoryVisible} transparent animationType="fade" onRequestClose={handleCloseStory}>
+        <Pressable style={styles.storyOverlay} onPress={handleCloseStory}>
+          <Pressable style={styles.storyCard} onPress={event => event.stopPropagation()}>
+            <Image source={{ uri: activeStory?.image }} style={styles.storyImage} />
+            <View style={styles.storyHeader}>
+              <Image source={{ uri: activeStory?.avatar }} style={styles.storyHeaderAvatar} />
+              <Text style={styles.storyHeaderName}>{activeStory?.userName}</Text>
+            </View>
+            <View style={styles.storyFooter}>
+              <Text style={styles.storyText}>{activeStory?.text}</Text>
+              <View style={styles.storyFooterActions}>
+                <TouchableOpacity
+                  style={[
+                    styles.storyLikeButton,
+                    activeStory && storyLikes[activeStory.id] && styles.storyLikeButtonActive,
+                  ]}
+                  onPress={() => activeStory && toggleStoryLike(activeStory.id)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name={activeStory && storyLikes[activeStory.id] ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={activeStory && storyLikes[activeStory.id] ? '#FF2D55' : '#F8FAFC'}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.storyDetailsButton}
+                  onPress={() => activeStory && handleOpenStoryDetails(activeStory)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="information-circle-outline" size={22} color="#F8FAFC" />
+                  <Text style={styles.storyDetailsLabel}>Подробнее о локации</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#edf0f5', paddingHorizontal: 10, paddingTop: '5%' },
+  container: { flex: 1, backgroundColor: '#edf0f5', paddingHorizontal: 10, paddingTop: '9%' },
   listContent: {
     paddingBottom: 200,
-    paddingTop: 10,
+    paddingTop: 20,
+  },
+  storiesSection: {
+    marginBottom: 24,
+    gap: 16,
+  },
+  storiesTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#0f172a',
+    paddingHorizontal: 4,
+  },
+  storiesList: {
+    gap: 16,
+    paddingHorizontal: 4,
+  },
+  storyItem: {
+    width: 74,
+    alignItems: 'center',
+    gap: 8,
+  },
+  storyRing: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    borderWidth: 3,
+    borderColor: '#007AFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+  },
+  storyAvatar: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+  },
+  storyName: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#1e293b',
+    textAlign: 'center',
   },
   listFooter: {
     alignItems: 'center',
@@ -447,6 +640,89 @@ const styles = StyleSheet.create({
   },
   reviewsList: {
     gap: 16,
+  },
+  storyOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(12, 15, 26, 0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  storyCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  storyImage: {
+    width: '100%',
+    height: 420,
+  },
+  storyHeader: {
+    position: 'absolute',
+    top: 18,
+    left: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(15, 23, 42, 0.55)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  storyHeaderAvatar: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+  },
+  storyHeaderName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#F8FAFC',
+  },
+  storyFooter: {
+    padding: 20,
+    gap: 18,
+    backgroundColor: '#111827',
+  },
+  storyText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#E2E8F0',
+  },
+  storyFooterActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  storyLikeButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  storyLikeButtonActive: {
+    backgroundColor: 'rgba(255,45,85,0.16)',
+  },
+  storyDetailsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
+  },
+  storyDetailsLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#F8FAFC',
   },
   hoursRow: {
     flexDirection: 'row',
