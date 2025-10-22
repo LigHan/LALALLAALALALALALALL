@@ -20,9 +20,10 @@ const QUICK_ACTIONS: Array<{
   label: string;
   iconFocused: ComponentProps<typeof Ionicons>['name'];
   iconDefault: ComponentProps<typeof Ionicons>['name'];
+  variation?: 'primary';
 }> = [
   { routeName: 'map', label: 'Карта', iconFocused: 'map', iconDefault: 'map-outline' },
-  { routeName: 'search', label: 'Поиск', iconFocused: 'search', iconDefault: 'search-outline' },
+  { routeName: 'search', label: 'Поиск места', iconFocused: 'search', iconDefault: 'search-outline', variation: 'primary' },
 ];
 
 export default function TabLayout() {
@@ -91,7 +92,13 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     );
   };
 
-  const renderQuickAction = ({ routeName, label, iconFocused, iconDefault }: typeof QUICK_ACTIONS[number]) => {
+  const renderQuickAction = ({
+    routeName,
+    label,
+    iconFocused,
+    iconDefault,
+    variation,
+  }: typeof QUICK_ACTIONS[number]) => {
     const route = state.routes.find(r => r.name === routeName);
     if (!route) {
       return null;
@@ -112,8 +119,19 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
     return (
       <TouchableOpacity key={routeName} style={styles.quickActionButton} onPress={onPress} activeOpacity={0.9}>
-        <Ionicons name={iconName} size={18} color="#fff" />
-        <Text style={styles.quickActionLabel}>{label}</Text>
+        <View style={[styles.quickActionPill, variation === 'primary' && styles.primaryQuickAction]}>
+          <View style={styles.quickActionIconContainer}>
+            <Ionicons name={iconName} size={18} color={variation === 'primary' ? '#fff' : '#1c1c1e'} />
+          </View>
+          <Text
+            style={[
+              styles.quickActionLabel,
+              variation === 'primary' ? styles.quickActionLabelPrimary : styles.quickActionLabelSecondary,
+            ]}
+          >
+            {label}
+          </Text>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -190,9 +208,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: 'rgba(0, 122, 255, 0.9)',
-    borderRadius: 24,
-    paddingHorizontal: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderRadius: 26,
+    paddingHorizontal: 16,
     paddingVertical: 10,
   },
   quickActionButton: {
@@ -200,9 +218,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  quickActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+  },
+  primaryQuickAction: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 28,
+  },
+  quickActionIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+  },
   quickActionLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  quickActionLabelPrimary: {
     color: '#fff',
     fontSize: 14,
     fontWeight: '600',
+  },
+  quickActionLabelSecondary: {
+    color: '#1c1c1e',
   },
 });
