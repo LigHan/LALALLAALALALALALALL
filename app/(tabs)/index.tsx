@@ -47,16 +47,16 @@ type Post = {
 const stories: Story[] = [
   {
     id: 's1',
-    userName: 'Moscow guides',
-    avatar: 'https://i.pravatar.cc/120?img=12',
-    image: 'https://images.unsplash.com/photo-1544984243-ec57ea16fe25?auto=format&fit=crop&w=800&q=80',
-    text: 'Новый маршрут вдоль Москвы-реки уже доступен. Захватывающие виды и уютные места по пути!',
+    userName: 'Парк Щербакова',
+    avatar: 'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
+    image: 'https://cdn.abo.media/upload/article/qhrcrgmqu5nljwlpehka.jpg',
+    text: 'Успейте пройтись по набережной в этот солнечный день!',
     postId: '1',
   },
   {
     id: 's2',
     userName: 'Urban explorer',
-    avatar: 'https://i.pravatar.cc/120?img=32',
+    avatar: '',
     image: 'https://images.unsplash.com/photo-1470123808288-1e59739bc221?auto=format&fit=crop&w=800&q=80',
     text: 'Побывал в арт-кластере Хлебозавод — это настоящий город в городе. Делюсь атмосферой.',
     postId: '2',
@@ -64,7 +64,7 @@ const stories: Story[] = [
   {
     id: 's3',
     userName: 'Coffee time',
-    avatar: 'https://i.pravatar.cc/120?img=56',
+    avatar: '',
     image: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=800&q=80',
     text: 'Нашли кофейню с невероятными десертами и видом на Тверскую. Лайфхак для сладкоежек.',
     postId: '2',
@@ -72,7 +72,7 @@ const stories: Story[] = [
   {
     id: 's4',
     userName: 'City walker',
-    avatar: 'https://i.pravatar.cc/120?img=14',
+    avatar: '',
     image: 'https://images.unsplash.com/photo-1529429617124-aee341f3b7a0?auto=format&fit=crop&w=800&q=80',
     text: 'Вечерняя прогулка по Замоскворечью — тихие улицы, старинные дома и уютные лавочки.',
     postId: '3',
@@ -83,8 +83,8 @@ const initialPosts: Post[] = [
   {
     id: '1',
     user: 'Анна',
-    place: 'Парк Горького',
-    image: 'https://picsum.photos/600/400?1',
+    place: 'Парк Щербакова',
+    image: 'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
     likes: 12,
     rating: 4.8,
     workingHours: [
