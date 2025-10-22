@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
-import { Tabs } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import type { ComponentProps } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -44,6 +44,7 @@ export default function TabLayout() {
 }
 
 function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const router = useRouter();
   const insets = useSafeAreaInsets();
   const quickActionNames = new Set(QUICK_ACTIONS.map(action => action.routeName));
   const primaryRoutes = state.routes.filter(route => !quickActionNames.has(route.name));
@@ -143,7 +144,29 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           <View style={styles.islandOverlay} />
           <View style={styles.islandContent}>
             <View style={styles.iconGroup}>{leftRoutes.map(route => renderTabIcon(route.name, route.key))}</View>
-            <View style={styles.quickActions}>{QUICK_ACTIONS.map(renderQuickAction)}</View>
+          <View style={styles.centerActions}>
+            <TouchableOpacity
+              style={styles.searchPlaceholder}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('search' as never)}
+            >
+              <Ionicons name="search" size={18} color="#1c1c1e" />
+            </TouchableOpacity>
+          </View>
+            <TouchableOpacity
+              style={styles.profileShortcut}
+              activeOpacity={0.85}
+              onPress={() => {
+                const isGuest = !(globalThis as { __CITY_GUIDE_USER__?: unknown }).__CITY_GUIDE_USER__;
+                if (isGuest) {
+                  router.push('/login');
+                } else {
+                  navigation.navigate('profile' as never);
+                }
+              }}
+            >
+              <Ionicons name="person-circle" size={26} color="#fff" />
+            </TouchableOpacity>
             <View style={styles.iconGroup}>{rightRoutes.map(route => renderTabIcon(route.name, route.key))}</View>
           </View>
         </BlurView>
@@ -185,14 +208,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
   },
   iconGroup: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  centerActions: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   iconButton: {
     width: 46,
@@ -205,13 +234,37 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 122, 255, 0.12)',
   },
   quickActions: {
+    display: 'none',
+  },
+  searchPlaceholder: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderRadius: 26,
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 22,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(12,23,42,0.12)',
+  },
+  searchPlaceholderText: {
+    fontSize: 13,
+    color: '#1c1c1e',
+  },
+  profileShortcut: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(0, 122, 255, 0.65)',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  profileShortcutLabel: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '600',
   },
   quickActionButton: {
     flexDirection: 'row',
