@@ -11,169 +11,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 
-type WorkingHours = {
-  label: string;
-  value: string;
-};
-
-type Review = {
-  id: string;
-  author: string;
-  comment: string;
-  rating: number;
-  date: string;
-};
-
-type Story = {
-  id: string;
-  userName: string;
-  avatar: string;
-  image: string;
-  text: string;
-  postId: string;
-};
-
-type Post = {
-  id: string;
-  user: string;
-  userAvatar: string;
-  place: string;
-  image: string;
-  likes: number;
-  rating: number;
-  workingHours: WorkingHours[];
-  reviews: Review[];
-  tags: string[];
-};
-
-const stories: Story[] = [
-  {
-    id: 's1',
-    userName: 'Парк Щербакова',
-    avatar: 'https://i.pravatar.cc/120?img=21',
-    image: 'https://cdn.abo.media/upload/article/qhrcrgmqu5nljwlpehka.jpg',
-    text: 'Успейте пройтись по набережной в этот солнечный день!',
-    postId: '1',
-  },
-  {
-    id: 's2',
-    userName: 'Urban explorer',
-    avatar: 'https://i.pravatar.cc/120?img=32',
-    image: 'https://images.unsplash.com/photo-1470123808288-1e59739bc221?auto=format&fit=crop&w=800&q=80',
-    text: 'Побывал в арт-кластере Хлебозавод — это настоящий город в городе. Делюсь атмосферой.',
-    postId: '2',
-  },
-  {
-    id: 's3',
-    userName: 'Coffee time',
-    avatar: 'https://i.pravatar.cc/120?img=56',
-    image: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=800&q=80',
-    text: 'Нашли кофейню с невероятными десертами и видом на Тверскую. Лайфхак для сладкоежек.',
-    postId: '2',
-  },
-  {
-    id: 's4',
-    userName: 'City walker',
-    avatar: 'https://i.pravatar.cc/120?img=47',
-    image: 'https://images.unsplash.com/photo-1529429617124-aee341f3b7a0?auto=format&fit=crop&w=800&q=80',
-    text: 'Вечерняя прогулка по Замоскворечью — тихие улицы, старинные дома и уютные лавочки.',
-    postId: '3',
-  },
-];
-
-const initialPosts: Post[] = [
-  {
-    id: '1',
-    user: 'Анна',
-    userAvatar: 'https://i.pravatar.cc/120?img=21',
-    place: 'Парк Щербакова',
-    image: 'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
-    likes: 12,
-    rating: 4.8,
-    tags: ['Парк', 'Семейный отдых', 'Озеро'],
-    workingHours: [
-      { label: 'Пн - Пт', value: '08:00 - 23:00' },
-      { label: 'Сб - Вс', value: '10:00 - 01:00' },
-    ],
-    reviews: [
-      {
-        id: 'r1',
-        author: 'Екатерина',
-        comment: 'Люблю этот парк — особенно вечером, когда включают подсветку фонтанов.',
-        rating: 5,
-        date: '12 мая 2024',
-      },
-      {
-        id: 'r2',
-        author: 'Максим',
-        comment: 'Хорошо оборудованные дорожки, много кафе. Единственный минус — многолюдно по выходным.',
-        rating: 4,
-        date: '8 мая 2024',
-      },
-    ],
-  },
-  {
-    id: '2',
-    user: 'Илья',
-    userAvatar: 'https://i.pravatar.cc/120?img=34',
-    place: 'ВДНХ',
-    image: 'https://picsum.photos/600/400?2',
-    likes: 7,
-    rating: 4.5,
-    tags: ['Культура', 'Выставки', 'АРТ'],
-    workingHours: [
-      { label: 'Пн - Пт', value: '09:00 - 20:00' },
-      { label: 'Сб - Вс', value: '10:00 - 22:00' },
-    ],
-    reviews: [
-      {
-        id: 'r3',
-        author: 'Артём',
-        comment: 'Отлично для семейных прогулок и изучения павильонов, есть чем заняться целый день.',
-        rating: 5,
-        date: '4 мая 2024',
-      },
-      {
-        id: 'r4',
-        author: 'Ольга',
-        comment: 'Зимой красиво, но некоторые павильоны закрыты. Летом обязательно вернусь.',
-        rating: 4,
-        date: '18 апреля 2024',
-      },
-    ],
-  },
-  {
-    id: '3',
-    user: 'Мария',
-    userAvatar: 'https://i.pravatar.cc/120?img=47',
-    place: 'Красная площадь',
-    image: 'https://picsum.photos/600/400?3',
-    likes: 25,
-    rating: 4.9,
-    tags: ['История', 'Главные места', 'События'],
-    workingHours: [{ label: 'Ежедневно', value: 'Круглосуточно' }],
-    reviews: [
-      {
-        id: 'r5',
-        author: 'Сергей',
-        comment: 'Вечером невероятно красиво, обязательно загляните на смену караула.',
-        rating: 5,
-        date: '1 мая 2024',
-      },
-      {
-        id: 'r6',
-        author: 'Виктория',
-        comment: 'Главная площадь города, стоит посетить каждому туристу.',
-        rating: 5,
-        date: '22 апреля 2024',
-      },
-    ],
-  },
-];
+import { posts as sourcePosts, stories, type Post, type Story } from '@/constants/content';
 
 export default function FeedScreen() {
-  const [posts, setPosts] = useState<Post[]>(initialPosts);
+  const router = useRouter();
+  const [posts, setPosts] = useState<Post[]>(sourcePosts);
   const [activePost, setActivePost] = useState<Post | null>(null);
   const [isScheduleVisible, setScheduleVisible] = useState(false);
   const [reviewsPost, setReviewsPost] = useState<Post | null>(null);
@@ -218,6 +62,9 @@ export default function FeedScreen() {
   };
   const handleCloseReviews = () => {
     setReviewsVisible(false);
+  };
+  const handleOpenProfile = (post: Post) => {
+    router.push({ pathname: '/company/[id]', params: { id: post.id } });
   };
   const handleOpenStory = (story: Story) => {
     setActiveStory(story);
@@ -346,6 +193,19 @@ export default function FeedScreen() {
           >
             <Image source={{ uri: item.image }} style={styles.image} />
             <View style={styles.info}>
+              <View style={styles.authorRow}>
+                <TouchableOpacity onPress={() => handleOpenProfile(item)} activeOpacity={0.8}>
+                  <Image source={{ uri: item.userAvatar }} style={styles.authorAvatar} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.authorDetails}
+                  onPress={() => handleOpenProfile(item)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.authorName}>{item.user}</Text>
+                  <Text style={styles.authorHandle}>@{item.userHandle}</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.placeRow}>
                 <Text style={styles.place}>{item.place}</Text>
                 <TouchableOpacity
@@ -360,7 +220,7 @@ export default function FeedScreen() {
                   <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={styles.user}>от {item.user}</Text>
+              <Text style={styles.userCaption}>от {item.user}</Text>
               <View style={styles.tagRow}>
                 {item.tags.map(tag => (
                   <View key={`${item.id}-${tag}`} style={styles.tagChip}>
@@ -407,15 +267,6 @@ export default function FeedScreen() {
                   style={styles.actionButton}
                 >
                   <Ionicons name="download-outline" size={24} color="#1C1C1E" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={(event: GestureResponderEvent) => {
-                    event.stopPropagation();
-                    handleOpenHours(item);
-                  }}
-                  style={[styles.actionButton, styles.scheduleButton]}
-                >
-                  <Ionicons name="time-outline" size={24} color="#005AC1" />
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
@@ -550,38 +401,41 @@ export default function FeedScreen() {
                     'Здесь вы найдете лучшие впечатления города: маршруты, атмосферные пространства и события рядом.'}
                 </Text>
                 <View style={styles.detailMetaRow}>
-                  <View style={styles.detailMeta}>
+                  <TouchableOpacity
+                    style={styles.detailMeta}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!detailPost) {
+                        return;
+                      }
+                      setDetailVisible(false);
+                      handleOpenHours(detailPost);
+                    }}
+                  >
                     <Ionicons name="time-outline" size={18} color="#1e293b" />
                     <Text style={styles.detailMetaText}>
                       {detailPost.workingHours[0]?.value ?? 'Нет данных'}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                   <View style={styles.detailMeta}>
                     <Ionicons name="heart-outline" size={18} color="#FF2D55" />
                     <Text style={styles.detailMetaText}>{`${detailPost.likes} отметок`}</Text>
                   </View>
                 </View>
               </View>
-              <View style={styles.detailUserBar}>
-                <View style={styles.detailUserInfo}>
-                  <Image source={{ uri: detailPost.userAvatar }} style={styles.detailUserAvatar} />
-                  <View style={styles.detailUserText}>
-                    <Text style={styles.detailUserName}>{detailPost.user}</Text>
-                    <Text style={styles.detailUserCaption}>Автор публикации</Text>
-                  </View>
+                <View style={styles.detailUserBar}>
+                  <TouchableOpacity
+                    style={styles.detailUserInfo}
+                    activeOpacity={0.85}
+                    onPress={() => handleOpenProfile(detailPost)}
+                  >
+                    <Image source={{ uri: detailPost.userAvatar }} style={styles.detailUserAvatar} />
+                    <View style={styles.detailUserText}>
+                      <Text style={styles.detailUserName}>{detailPost.user}</Text>
+                      <Text style={styles.detailUserCaption}>Автор публикации</Text>
+                    </View>
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity
-                  style={styles.detailScheduleButton}
-                  onPress={() => {
-                    setDetailVisible(false);
-                    setActivePost(detailPost);
-                    setScheduleVisible(true);
-                  }}
-                >
-                  <Ionicons name="calendar-outline" size={18} color="#0f172a" />
-                  <Text style={styles.detailScheduleLabel}>Расписание</Text>
-                </TouchableOpacity>
-              </View>
             </Pressable>
           )}
         </Pressable>
@@ -591,7 +445,7 @@ export default function FeedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#edf0f5', paddingHorizontal: 10, paddingTop: '9%' },
+  container: { flex: 1, backgroundColor: '#ffffff', paddingHorizontal: 10, paddingTop: '9%' },
   listContent: {
     paddingBottom: 200,
     paddingTop: 20,
@@ -662,6 +516,30 @@ const styles = StyleSheet.create({
   },
   image: { width: '100%', height: 300 },
   info: { padding: 10 },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  authorAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  authorDetails: {
+    flex: 1,
+  },
+  authorName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  authorHandle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
   placeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -683,7 +561,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#B45309',
   },
-  user: { color: '#777', marginTop: 4 },
+  userCaption: { color: '#777', marginTop: 4 },
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -728,9 +606,6 @@ const styles = StyleSheet.create({
   },
   favoriteButton: {
     marginLeft: 'auto',
-  },
-  scheduleButton: {
-    backgroundColor: 'rgba(0, 90, 193, 0.12)',
   },
   likeCount: {
     fontSize: 16,
@@ -925,25 +800,6 @@ const styles = StyleSheet.create({
   detailUserCaption: {
     fontSize: 13,
     color: '#475569',
-  },
-  detailScheduleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 18,
-    shadowColor: '#0f172a',
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-  },
-  detailScheduleLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0f172a',
   },
   storyOverlay: {
     flex: 1,
