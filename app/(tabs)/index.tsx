@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
   FlatList,
+  GestureResponderEvent,
   Image,
   Modal,
   Pressable,
@@ -36,19 +37,21 @@ type Story = {
 type Post = {
   id: string;
   user: string;
+  userAvatar: string;
   place: string;
   image: string;
   likes: number;
   rating: number;
   workingHours: WorkingHours[];
   reviews: Review[];
+  tags: string[];
 };
 
 const stories: Story[] = [
   {
     id: 's1',
     userName: 'Парк Щербакова',
-    avatar: 'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
+    avatar: 'https://i.pravatar.cc/120?img=21',
     image: 'https://cdn.abo.media/upload/article/qhrcrgmqu5nljwlpehka.jpg',
     text: 'Успейте пройтись по набережной в этот солнечный день!',
     postId: '1',
@@ -56,7 +59,7 @@ const stories: Story[] = [
   {
     id: 's2',
     userName: 'Urban explorer',
-    avatar: '',
+    avatar: 'https://i.pravatar.cc/120?img=32',
     image: 'https://images.unsplash.com/photo-1470123808288-1e59739bc221?auto=format&fit=crop&w=800&q=80',
     text: 'Побывал в арт-кластере Хлебозавод — это настоящий город в городе. Делюсь атмосферой.',
     postId: '2',
@@ -64,7 +67,7 @@ const stories: Story[] = [
   {
     id: 's3',
     userName: 'Coffee time',
-    avatar: '',
+    avatar: 'https://i.pravatar.cc/120?img=56',
     image: 'https://images.unsplash.com/photo-1521017432531-fbd92d768814?auto=format&fit=crop&w=800&q=80',
     text: 'Нашли кофейню с невероятными десертами и видом на Тверскую. Лайфхак для сладкоежек.',
     postId: '2',
@@ -72,7 +75,7 @@ const stories: Story[] = [
   {
     id: 's4',
     userName: 'City walker',
-    avatar: '',
+    avatar: 'https://i.pravatar.cc/120?img=47',
     image: 'https://images.unsplash.com/photo-1529429617124-aee341f3b7a0?auto=format&fit=crop&w=800&q=80',
     text: 'Вечерняя прогулка по Замоскворечью — тихие улицы, старинные дома и уютные лавочки.',
     postId: '3',
@@ -83,10 +86,12 @@ const initialPosts: Post[] = [
   {
     id: '1',
     user: 'Анна',
+    userAvatar: 'https://i.pravatar.cc/120?img=21',
     place: 'Парк Щербакова',
     image: 'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
     likes: 12,
     rating: 4.8,
+    tags: ['Парк', 'Семейный отдых', 'Озеро'],
     workingHours: [
       { label: 'Пн - Пт', value: '08:00 - 23:00' },
       { label: 'Сб - Вс', value: '10:00 - 01:00' },
@@ -111,10 +116,12 @@ const initialPosts: Post[] = [
   {
     id: '2',
     user: 'Илья',
+    userAvatar: 'https://i.pravatar.cc/120?img=34',
     place: 'ВДНХ',
     image: 'https://picsum.photos/600/400?2',
     likes: 7,
     rating: 4.5,
+    tags: ['Культура', 'Выставки', 'АРТ'],
     workingHours: [
       { label: 'Пн - Пт', value: '09:00 - 20:00' },
       { label: 'Сб - Вс', value: '10:00 - 22:00' },
@@ -139,10 +146,12 @@ const initialPosts: Post[] = [
   {
     id: '3',
     user: 'Мария',
+    userAvatar: 'https://i.pravatar.cc/120?img=47',
     place: 'Красная площадь',
     image: 'https://picsum.photos/600/400?3',
     likes: 25,
     rating: 4.9,
+    tags: ['История', 'Главные места', 'События'],
     workingHours: [{ label: 'Ежедневно', value: 'Круглосуточно' }],
     reviews: [
       {
@@ -172,6 +181,8 @@ export default function FeedScreen() {
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [isStoryVisible, setStoryVisible] = useState(false);
   const [storyLikes, setStoryLikes] = useState<Record<string, boolean>>({});
+  const [detailPost, setDetailPost] = useState<Post | null>(null);
+  const [isDetailVisible, setDetailVisible] = useState(false);
 
   const handleLike = (id: string) => {
     setPosts(prev =>
@@ -219,8 +230,8 @@ export default function FeedScreen() {
     const relatedPost = posts.find(post => post.id === story.postId);
     if (relatedPost) {
       setStoryVisible(false);
-      setActivePost(relatedPost);
-      setScheduleVisible(true);
+      setDetailPost(relatedPost);
+      setDetailVisible(true);
     }
   };
   const toggleStoryLike = (storyId: string) => {
@@ -228,6 +239,13 @@ export default function FeedScreen() {
       ...prev,
       [storyId]: !prev[storyId],
     }));
+  };
+  const handleOpenDetail = (post: Post) => {
+    setDetailPost(post);
+    setDetailVisible(true);
+  };
+  const handleCloseDetail = () => {
+    setDetailVisible(false);
   };
 
   useEffect(() => {
@@ -265,6 +283,18 @@ export default function FeedScreen() {
       }
     };
   }, [isStoryVisible, activeStory]);
+
+  useEffect(() => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    if (!isDetailVisible && detailPost) {
+      timeout = setTimeout(() => setDetailPost(null), 220);
+    }
+    return () => {
+      if (timeout) {
+        clearTimeout(timeout);
+      }
+    };
+  }, [isDetailVisible, detailPost]);
 
   const renderFooter = () =>
     posts.length > 0 ? (
@@ -309,52 +339,96 @@ export default function FeedScreen() {
         }
         ListFooterComponent={renderFooter}
         renderItem={({ item }) => (
-          <View style={styles.post}>
+          <TouchableOpacity
+            activeOpacity={0.92}
+            style={styles.post}
+            onPress={() => handleOpenDetail(item)}
+          >
             <Image source={{ uri: item.image }} style={styles.image} />
-              <View style={styles.info}>
-                <View style={styles.placeRow}>
-                  <Text style={styles.place}>{item.place}</Text>
-                  <TouchableOpacity
-                    style={styles.ratingBadge}
-                    onPress={() => handleOpenReviews(item)}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="star" size={16} color="#FFB800" />
-                    <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.user}>от {item.user}</Text>
+            <View style={styles.info}>
+              <View style={styles.placeRow}>
+                <Text style={styles.place}>{item.place}</Text>
+                <TouchableOpacity
+                  style={styles.ratingBadge}
+                  onPress={(event: GestureResponderEvent) => {
+                    event.stopPropagation();
+                    handleOpenReviews(item);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="star" size={16} color="#FFB800" />
+                  <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                </TouchableOpacity>
               </View>
+              <Text style={styles.user}>от {item.user}</Text>
+              <View style={styles.tagRow}>
+                {item.tags.map(tag => (
+                  <View key={`${item.id}-${tag}`} style={styles.tagChip}>
+                    <Text style={styles.tagText}>#{tag}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
             <View style={styles.actions}>
               <View style={styles.actionGroup}>
-                <TouchableOpacity onPress={() => handleLike(item.id)} style={styles.likeBtn}>
+                <TouchableOpacity
+                  onPress={(event: GestureResponderEvent) => {
+                    event.stopPropagation();
+                    handleLike(item.id);
+                  }}
+                  style={styles.likeBtn}
+                >
                   <Ionicons name="heart-outline" size={24} color="#FF2D55" />
                   <Text style={styles.likeCount}>{item.likes}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleComment(item.id)} style={styles.actionButton}>
+                <TouchableOpacity
+                  onPress={(event: GestureResponderEvent) => {
+                    event.stopPropagation();
+                    handleComment(item.id);
+                  }}
+                  style={styles.actionButton}
+                >
                   <Ionicons name="chatbubble-ellipses-outline" size={24} color="#1C1C1E" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleOpenMap(item.id)} style={styles.actionButton}>
+                <TouchableOpacity
+                  onPress={(event: GestureResponderEvent) => {
+                    event.stopPropagation();
+                    handleOpenMap(item.id);
+                  }}
+                  style={styles.actionButton}
+                >
                   <Ionicons name="map-outline" size={24} color="#1C1C1E" />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => handleDownload(item.id)} style={styles.actionButton}>
+                <TouchableOpacity
+                  onPress={(event: GestureResponderEvent) => {
+                    event.stopPropagation();
+                    handleDownload(item.id);
+                  }}
+                  style={styles.actionButton}
+                >
                   <Ionicons name="download-outline" size={24} color="#1C1C1E" />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => handleOpenHours(item)}
+                  onPress={(event: GestureResponderEvent) => {
+                    event.stopPropagation();
+                    handleOpenHours(item);
+                  }}
                   style={[styles.actionButton, styles.scheduleButton]}
                 >
                   <Ionicons name="time-outline" size={24} color="#005AC1" />
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
-                onPress={() => handleFavorite(item.id)}
+                onPress={(event: GestureResponderEvent) => {
+                  event.stopPropagation();
+                  handleFavorite(item.id);
+                }}
                 style={[styles.actionButton, styles.favoriteButton]}
               >
                 <Ionicons name="bookmark-outline" size={24} color="#1C1C1E" />
               </TouchableOpacity>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
       />
       <Modal visible={isScheduleVisible} transparent animationType="fade" onRequestClose={handleCloseHours}>
@@ -448,6 +522,68 @@ export default function FeedScreen() {
               </View>
             </View>
           </Pressable>
+        </Pressable>
+      </Modal>
+      <Modal visible={isDetailVisible} transparent animationType="fade" onRequestClose={handleCloseDetail}>
+        <Pressable style={styles.detailOverlay} onPress={handleCloseDetail}>
+          {detailPost && (
+            <Pressable style={styles.detailCard} onPress={event => event.stopPropagation()}>
+              <Image source={{ uri: detailPost.image }} style={styles.detailImage} />
+              <View style={styles.detailContent}>
+                <View style={styles.detailHeader}>
+                  <Text style={styles.detailTitle}>{detailPost.place}</Text>
+                  <View style={styles.detailRating}>
+                    <Ionicons name="star" size={18} color="#FFB800" />
+                    <Text style={styles.detailRatingText}>{detailPost.rating.toFixed(1)}</Text>
+                  </View>
+                </View>
+                <Text style={styles.detailSubtitle}>Гид по локации</Text>
+                <View style={styles.detailTags}>
+                  {detailPost.tags.map(tag => (
+                    <View key={`${detailPost.id}-detail-${tag}`} style={styles.detailTagChip}>
+                      <Text style={styles.detailTagText}>#{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.detailDescription}>
+                  {detailPost.reviews[0]?.comment ??
+                    'Здесь вы найдете лучшие впечатления города: маршруты, атмосферные пространства и события рядом.'}
+                </Text>
+                <View style={styles.detailMetaRow}>
+                  <View style={styles.detailMeta}>
+                    <Ionicons name="time-outline" size={18} color="#1e293b" />
+                    <Text style={styles.detailMetaText}>
+                      {detailPost.workingHours[0]?.value ?? 'Нет данных'}
+                    </Text>
+                  </View>
+                  <View style={styles.detailMeta}>
+                    <Ionicons name="heart-outline" size={18} color="#FF2D55" />
+                    <Text style={styles.detailMetaText}>{`${detailPost.likes} отметок`}</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.detailUserBar}>
+                <View style={styles.detailUserInfo}>
+                  <Image source={{ uri: detailPost.userAvatar }} style={styles.detailUserAvatar} />
+                  <View style={styles.detailUserText}>
+                    <Text style={styles.detailUserName}>{detailPost.user}</Text>
+                    <Text style={styles.detailUserCaption}>Автор публикации</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.detailScheduleButton}
+                  onPress={() => {
+                    setDetailVisible(false);
+                    setActivePost(detailPost);
+                    setScheduleVisible(true);
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={18} color="#0f172a" />
+                  <Text style={styles.detailScheduleLabel}>Расписание</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
+          )}
         </Pressable>
       </Modal>
     </View>
@@ -548,6 +684,23 @@ const styles = StyleSheet.create({
     color: '#B45309',
   },
   user: { color: '#777', marginTop: 4 },
+  tagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 8,
+  },
+  tagChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -640,6 +793,157 @@ const styles = StyleSheet.create({
   },
   reviewsList: {
     gap: 16,
+  },
+  detailOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(12, 15, 26, 0.78)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 18,
+  },
+  detailCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: 28,
+    overflow: 'hidden',
+    backgroundColor: '#f8fafc',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 20,
+  },
+  detailImage: {
+    width: '100%',
+    height: 260,
+  },
+  detailContent: {
+    paddingHorizontal: 24,
+    paddingVertical: 22,
+    gap: 14,
+  },
+  detailHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  detailTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#0f172a',
+    flex: 1,
+  },
+  detailRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 184, 0, 0.18)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  detailRatingText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#92400e',
+  },
+  detailSubtitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    color: '#475569',
+    textTransform: 'uppercase',
+  },
+  detailTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  detailTagChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+  },
+  detailTagText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
+  detailDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#1f2937',
+  },
+  detailMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  detailMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.06)',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 14,
+  },
+  detailMetaText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1e293b',
+  },
+  detailUserBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: '#e2e8f0',
+  },
+  detailUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  detailUserAvatar: {
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+  },
+  detailUserText: {
+    gap: 4,
+  },
+  detailUserName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  detailUserCaption: {
+    fontSize: 13,
+    color: '#475569',
+  },
+  detailScheduleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 18,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  detailScheduleLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0f172a',
   },
   storyOverlay: {
     flex: 1,
