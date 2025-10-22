@@ -24,6 +24,7 @@ export default function RootLayout() {
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
               <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+              <Stack.Screen name="company/[id]" options={{ title: 'Профиль места' }} />
             </Stack>
           </View>
         </View>
@@ -36,6 +37,7 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   nativeShell: {
     flex: 1,
+    backgroundColor: '#ffffff',
   },
   stackContainer: {
     flex: 1,
@@ -45,8 +47,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 32,
-    backgroundColor: '#f2f2f7',
-    minHeight: '100vh',
+    backgroundColor: '#ffffff',
+    minHeight: '100%',
   },
   webViewport: {
     width: 430,
@@ -63,5 +65,6 @@ const styles = StyleSheet.create({
   },
   nativeViewport: {
     flex: 1,
+    backgroundColor: '#ffffff',
   },
 });
