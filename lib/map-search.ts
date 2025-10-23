@@ -1,15 +1,17 @@
-type MapSearchHandler = (query?: string) => void;
+type MapAction =
+  | { type: 'search'; query?: string }
+  | { type: 'route'; query: string };
 
-let currentHandler: MapSearchHandler | null = null;
-let pendingQuery: string | undefined;
-let hasPending = false;
+type MapActionHandler = (action: MapAction) => void;
 
-export function registerMapSearchHandler(handler: MapSearchHandler) {
+let currentHandler: MapActionHandler | null = null;
+let pendingAction: MapAction | null = null;
+
+export function registerMapSearchHandler(handler: MapActionHandler) {
   currentHandler = handler;
-  if (hasPending) {
-    handler(pendingQuery);
-    hasPending = false;
-    pendingQuery = undefined;
+  if (pendingAction) {
+    handler(pendingAction);
+    pendingAction = null;
   }
   return () => {
     if (currentHandler === handler) {
@@ -19,10 +21,17 @@ export function registerMapSearchHandler(handler: MapSearchHandler) {
 }
 
 export function triggerMapSearch(query?: string) {
+  triggerMapAction({ type: 'search', query });
+}
+
+export function triggerMapRoute(query: string) {
+  triggerMapAction({ type: 'route', query });
+}
+
+function triggerMapAction(action: MapAction) {
   if (currentHandler) {
-    currentHandler(query);
+    currentHandler(action);
   } else {
-    pendingQuery = query;
-    hasPending = true;
+    pendingAction = action;
   }
 }

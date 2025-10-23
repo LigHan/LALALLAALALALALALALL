@@ -12,8 +12,10 @@ import {
   UIManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { triggerMapRoute, triggerMapSearch } from '@/lib/map-search';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -118,6 +120,7 @@ const CATEGORY_FILTERS = [
 ];
 
 export default function NearbyScreen() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedPlace, setSelectedPlace] = useState<string | null>(null);
 
@@ -154,9 +157,16 @@ export default function NearbyScreen() {
     Linking.openURL(`https://${website}`);
   };
 
-  const handleOpenMap = (place: typeof NEARBY_PLACES[0]) => {
-    const url = `https://maps.google.com/?q=${encodeURIComponent(place.address)}`;
-    Linking.openURL(url);
+  const openInMap = (address: string) => {
+    if (!address) return;
+    router.push('/map');
+    triggerMapSearch(address);
+  };
+
+  const buildRoute = (address: string) => {
+    if (!address) return;
+    router.push('/map');
+    triggerMapRoute(address);
   };
 
   const renderPlaceItem = ({ item }: { item: typeof NEARBY_PLACES[0] }) => (
@@ -189,8 +199,15 @@ export default function NearbyScreen() {
         </View>
         
         <ThemedText style={styles.placeCategory}>{item.category}</ThemedText>
-        <ThemedText style={styles.placeAddress}>{item.address}</ThemedText>
-        
+        <TouchableOpacity
+          style={styles.addressRow}
+          activeOpacity={0.85}
+          onPress={() => openInMap(item.address)}
+        >
+          <Ionicons name="location-outline" size={16} color="#2563eb" />
+          <ThemedText style={styles.addressText}>{item.address}</ThemedText>
+        </TouchableOpacity>
+
         <View style={styles.placeFooter}>
           <View style={[
             styles.statusBadge,
@@ -200,6 +217,25 @@ export default function NearbyScreen() {
               {item.isOpen ? 'Открыто' : 'Закрыто'}
             </ThemedText>
           </View>
+        </View>
+
+        <View style={styles.placeActions}>
+          <TouchableOpacity
+            style={styles.placeActionButton}
+            activeOpacity={0.85}
+            onPress={() => openInMap(item.address)}
+          >
+            <Ionicons name="map-outline" size={16} color="#1d4ed8" />
+            <ThemedText style={styles.placeActionText}>На карте</ThemedText>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.placeActionButton}
+            activeOpacity={0.85}
+            onPress={() => buildRoute(item.address)}
+          >
+            <Ionicons name="navigate-outline" size={16} color="#1d4ed8" />
+            <ThemedText style={styles.placeActionText}>Маршрут</ThemedText>
+          </TouchableOpacity>
         </View>
 
         {/* Особенности места */}
@@ -221,7 +257,7 @@ export default function NearbyScreen() {
             <View style={styles.actionsContainer}>
               <TouchableOpacity 
                 style={[styles.actionButton, { backgroundColor: '#007AFF' }]}
-                onPress={() => handleOpenMap(item)}
+                onPress={() => buildRoute(item.address)}
               >
                 <Ionicons name="navigate" size={18} color="#fff" />
                 <ThemedText style={styles.actionButtonText}>Маршрут</ThemedText>
@@ -466,11 +502,17 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     color: '#475569',
   },
-  placeAddress: {
-    fontSize: 14,
-    opacity: 0.8,
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 12,
-    color: '#0f172a',
+  },
+  addressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1d4ed8',
+    textDecorationLine: 'underline',
   },
   placeFooter: {
     marginBottom: 12,
@@ -503,6 +545,26 @@ const styles = StyleSheet.create({
     color: '#1d4ed8',
     fontWeight: '600',
     textTransform: 'lowercase',
+  },
+  placeActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  placeActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
+  },
+  placeActionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#1d4ed8',
   },
   detailsContainer: {
     marginTop: 16,

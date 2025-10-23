@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { posts } from '@/constants/content';
+import { normalizePost, posts } from '@/constants/content';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
@@ -51,7 +51,9 @@ export default function ProfileScreen() {
   const companyPosts = useMemo(
     () =>
       isCompany
-        ? posts.filter(post => post.userHandle === sessionHandle)
+        ? posts
+            .filter(post => post.userHandle === sessionHandle)
+            .map(normalizePost)
         : [],
     [isCompany, sessionHandle]
   );

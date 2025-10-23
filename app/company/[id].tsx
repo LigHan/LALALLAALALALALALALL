@@ -16,7 +16,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { posts } from '@/constants/content';
+import { normalizePost, posts } from '@/constants/content';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -25,7 +25,7 @@ export default function CompanyScreen() {
   const { id } = useLocalSearchParams<{ id?: string }>();
   const { width: windowWidth } = useWindowDimensions();
 
-  const company = useMemo(() => posts.find(post => post.id === id) ?? posts[0], [id]);
+  const company = useMemo(() => normalizePost(posts.find(post => post.id === id) ?? posts[0]), [id]);
   const [isGalleryVisible, setGalleryVisible] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [isContactVisible, setContactVisible] = useState(false);

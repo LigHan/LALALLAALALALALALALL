@@ -14,7 +14,7 @@ interface MapCoordinates {
 }
 
 interface MapMessage {
-  type: 'MAP_CLICK' | 'SEARCH_RESULT' | 'MAP_LOADED' | 'ERROR';
+  type: 'MAP_CLICK' | 'SEARCH_RESULT' | 'MAP_LOADED' | 'ROUTE_BUILT' | 'ERROR';
   latitude?: number;
   longitude?: number;
   address?: string;
@@ -30,6 +30,7 @@ interface YandexMapProps {
 export type YandexMapHandle = {
   searchAddress: (address: string) => void;
   moveToCoordinates: (coords: MapCoordinates) => void;
+  buildRoute: (address: string, start?: MapCoordinates) => void;
   getSelectedLocation: () => MapCoordinates;
   getSelectedAddress: () => string | undefined;
 };
@@ -71,6 +72,7 @@ const YandexMap = forwardRef<YandexMapHandle, YandexMapProps>(({
     <script>
         let map;
         let currentMarker;
+        let currentRoute;
 
         ymaps.ready(init);
 
@@ -145,6 +147,10 @@ const YandexMap = forwardRef<YandexMapHandle, YandexMapProps>(({
                 // Обновляем карту
                 map.setCenter(coords, 15);
                 map.geoObjects.remove(currentMarker);
+                if (currentRoute) {
+                    map.geoObjects.remove(currentRoute);
+                    currentRoute = null;
+                }
                 
                 currentMarker = new ymaps.Placemark(coords, {
                     balloonContent: foundAddress
@@ -182,6 +188,79 @@ const YandexMap = forwardRef<YandexMapHandle, YandexMapProps>(({
             });
             
             map.geoObjects.add(currentMarker);
+        };
+
+        window.buildRoute = function(address, startLat, startLon) {
+            if (!address) return;
+
+            ymaps.geocode(address).then(function (res) {
+                const geoObject = res.geoObjects.get(0);
+                if (!geoObject) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'ERROR',
+                        error: 'Маршрут не найден'
+                    }));
+                    return;
+                }
+
+                const destinationCoords = geoObject.geometry.getCoordinates();
+                const destinationAddress = geoObject.getAddressLine();
+
+                const hasProvidedStart = typeof startLat === 'number' && !Number.isNaN(startLat) && typeof startLon === 'number' && !Number.isNaN(startLon);
+
+                const startPromise = hasProvidedStart
+                    ? Promise.resolve([startLat, startLon])
+                    : ymaps.geolocation.get({ provider: 'auto', mapStateAutoApply: false })
+                        .then(function (result) {
+                            const pos = result.geoObjects.position;
+                            if (Array.isArray(pos) && pos.length === 2 && typeof pos[0] === 'number' && typeof pos[1] === 'number') {
+                                return pos;
+                            }
+                            return map.getCenter();
+                        })
+                        .catch(function () {
+                            return map.getCenter();
+                        });
+
+                startPromise.then(function (startCoords) {
+                    ymaps.route([startCoords, destinationCoords], { mapStateAutoApply: true })
+                        .then(function(route) {
+                            if (currentRoute) {
+                                map.geoObjects.remove(currentRoute);
+                            }
+                            currentRoute = route;
+                            map.geoObjects.add(route);
+
+                            if (route && typeof route.getBounds === 'function') {
+                                const bounds = route.getBounds();
+                                if (bounds) {
+                                    map.setBounds(bounds, { checkZoomRange: true, duration: 300 });
+                                }
+                            }
+
+                            map.geoObjects.remove(currentMarker);
+                            currentMarker = new ymaps.Placemark(destinationCoords, {
+                                balloonContent: destinationAddress
+                            }, {
+                                preset: 'islands#redDotIcon'
+                            });
+                            map.geoObjects.add(currentMarker);
+
+                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                type: 'ROUTE_BUILT',
+                                latitude: destinationCoords[0],
+                                longitude: destinationCoords[1],
+                                address: destinationAddress
+                            }));
+                        })
+                        .catch(function (error) {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({
+                                type: 'ERROR',
+                                error: 'Не удалось построить маршрут: ' + error
+                            }));
+                        });
+                });
+            });
         };
     </script>
 </body>
@@ -221,6 +300,18 @@ const YandexMap = forwardRef<YandexMapHandle, YandexMapProps>(({
             onLocationSelect?.(newCoords, data.address);
           }
           break;
+
+        case 'ROUTE_BUILT':
+          if (data.latitude && data.longitude) {
+            const routeCoords: MapCoordinates = {
+              latitude: data.latitude,
+              longitude: data.longitude
+            };
+            setSelectedLocation(routeCoords);
+            setAddress(data.address || '');
+            onLocationSelect?.(routeCoords, data.address);
+          }
+          break;
           
         case 'ERROR':
           Alert.alert('Ошибка', data.error || 'Произошла ошибка');
@@ -247,9 +338,22 @@ const YandexMap = forwardRef<YandexMapHandle, YandexMapProps>(({
     `);
   };
 
+  const buildRoute = (destination: string, start?: MapCoordinates) => {
+    const trimmed = destination.trim();
+    if (!trimmed) return;
+    const sanitized = trimmed.replace(/"/g, '\\"');
+    const startLat = start ? start.latitude : 'null';
+    const startLon = start ? start.longitude : 'null';
+    webViewRef.current?.injectJavaScript(`
+      window.buildRoute("${sanitized}", ${startLat}, ${startLon});
+      true;
+    `);
+  };
+
   useImperativeHandle(ref, () => ({
     searchAddress,
     moveToCoordinates,
+    buildRoute,
     getSelectedLocation: () => selectedLocation,
     getSelectedAddress: () => address,
   }), [address, selectedLocation]);

@@ -11,10 +11,13 @@ import {
 } from 'react-native';
 
 import { registerMapSearchHandler } from '@/lib/map-search';
+import * as Location from 'expo-location';
 
 import YandexMap, { type YandexMapHandle } from './YandexMap';
 
-const INITIAL_LOCATION = { latitude: 48.0158, longitude: 37.8026 };
+type Coordinates = { latitude: number; longitude: number };
+
+const INITIAL_LOCATION: Coordinates = { latitude: 48.0158, longitude: 37.8026 };
 
 export default function MapScreen() {
   const mapRef = useRef<YandexMapHandle>(null);
@@ -24,6 +27,8 @@ export default function MapScreen() {
   const [selectedLocation, setSelectedLocation] = useState(INITIAL_LOCATION);
   const [selectedAddress, setSelectedAddress] = useState<string | undefined>(undefined);
   const [searchActive, setSearchActive] = useState(false);
+  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
+  const hasCenteredInitial = useRef(false);
 
   const handleLocationSelect = useCallback((coords: { latitude: number; longitude: number }, address?: string) => {
     setSelectedLocation(coords);
@@ -46,26 +51,69 @@ export default function MapScreen() {
     });
   }, []);
 
-  const handleExternalSearch = useCallback((query?: string) => {
-    if (query && query.trim()) {
-      const trimmed = query.trim();
-      setSearchQuery(trimmed);
-      setSearchActive(false);
-      requestAnimationFrame(() => {
-        mapRef.current?.searchAddress(trimmed);
-      });
-    } else {
-      openSearch();
+  const handleExternalAction = useCallback((action: { type: 'search'; query?: string } | { type: 'route'; query: string }) => {
+    if (action.type === 'search') {
+      const trimmed = action.query?.trim();
+      if (trimmed) {
+        setSearchQuery(trimmed);
+        setSearchActive(false);
+        requestAnimationFrame(() => {
+          mapRef.current?.searchAddress(trimmed);
+        });
+      } else {
+        openSearch();
+      }
+      return;
     }
-  }, [openSearch]);
+
+    const trimmed = action.query.trim();
+    if (!trimmed) return;
+    setSearchQuery(trimmed);
+    setSearchActive(false);
+    requestAnimationFrame(() => {
+      mapRef.current?.buildRoute(trimmed, userLocation ?? undefined);
+    });
+  }, [openSearch, userLocation]);
 
   useEffect(() => {
-    const unregister = registerMapSearchHandler(handleExternalSearch);
+    const unregister = registerMapSearchHandler(handleExternalAction);
     return unregister;
-  }, [handleExternalSearch]);
+  }, [handleExternalAction]);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          return;
+        }
+        const position = await Location.getCurrentPositionAsync({});
+        if (!mounted) return;
+        setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
+      } catch (error) {
+        console.warn('Не удалось получить местоположение', error);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (userLocation && !hasCenteredInitial.current) {
+      setSelectedLocation(userLocation);
+      setSelectedAddress('Моё местоположение');
+      hasCenteredInitial.current = true;
+      mapRef.current?.moveToCoordinates(userLocation);
+    }
+  }, [userLocation]);
 
   const handleRecenter = () => {
-    mapRef.current?.moveToCoordinates(selectedLocation);
+    const target = userLocation ?? selectedLocation;
+    mapRef.current?.moveToCoordinates(target);
+    setSelectedLocation(target);
   };
 
   return (

@@ -13,20 +13,28 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { posts as sourcePosts, stories, type Post, type Story } from '@/constants/content';
-import { triggerMapSearch } from '@/lib/map-search';
+import {
+  posts as sourcePosts,
+  stories,
+  normalizePosts,
+  type NormalizedPost,
+  type Story
+} from '@/constants/content';
+import { triggerMapRoute, triggerMapSearch } from '@/lib/map-search';
+
+type FeedPost = NormalizedPost;
 
 export default function FeedScreen() {
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>(sourcePosts);
-  const [activePost, setActivePost] = useState<Post | null>(null);
+  const [posts, setPosts] = useState<FeedPost[]>(() => normalizePosts(sourcePosts));
+  const [activePost, setActivePost] = useState<FeedPost | null>(null);
   const [isScheduleVisible, setScheduleVisible] = useState(false);
-  const [reviewsPost, setReviewsPost] = useState<Post | null>(null);
+  const [reviewsPost, setReviewsPost] = useState<FeedPost | null>(null);
   const [isReviewsVisible, setReviewsVisible] = useState(false);
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [isStoryVisible, setStoryVisible] = useState(false);
   const [storyLikes, setStoryLikes] = useState<Record<string, boolean>>({});
-  const [detailPost, setDetailPost] = useState<Post | null>(null);
+  const [detailPost, setDetailPost] = useState<FeedPost | null>(null);
   const [isDetailVisible, setDetailVisible] = useState(false);
 
   const handleLike = (id: string) => {
@@ -38,29 +46,33 @@ export default function FeedScreen() {
     // TODO: persist favorites or show feedback
     console.log(`favorite ${id}`);
   };
-  const handleOpenMap = (post: Post) => {
+  const handleOpenMap = (post: FeedPost) => {
     router.push('/map');
     triggerMapSearch(post.address);
+  };
+  const handleBuildRoute = (post: FeedPost) => {
+    router.push('/map');
+    triggerMapRoute(post.address);
   };
   const handleDownload = (id: string) => {
     // TODO: trigger download or share sheet
     console.log(`download for ${id}`);
   };
-  const handleOpenHours = (post: Post) => {
+  const handleOpenHours = (post: FeedPost) => {
     setActivePost(post);
     setScheduleVisible(true);
   };
   const handleCloseHours = () => {
     setScheduleVisible(false);
   };
-  const handleOpenReviews = (post: Post) => {
+  const handleOpenReviews = (post: FeedPost) => {
     setReviewsPost(post);
     setReviewsVisible(true);
   };
   const handleCloseReviews = () => {
     setReviewsVisible(false);
   };
-  const handleOpenProfile = (post: Post) => {
+  const handleOpenProfile = (post: FeedPost) => {
     router.push({ pathname: '/company/[id]', params: { id: post.id } });
   };
   const handleOpenStory = (story: Story) => {
@@ -84,7 +96,7 @@ export default function FeedScreen() {
       [storyId]: !prev[storyId],
     }));
   };
-  const handleOpenDetail = (post: Post) => {
+  const handleOpenDetail = (post: FeedPost) => {
     setDetailPost(post);
     setDetailVisible(true);
   };
@@ -252,11 +264,11 @@ export default function FeedScreen() {
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
                     event.stopPropagation();
-                    handleOpenMap(item);
+                    handleBuildRoute(item);
                   }}
                   style={styles.actionButton}
                 >
-                  <Ionicons name="map-outline" size={24} color="#1C1C1E" />
+                  <Ionicons name="navigate-outline" size={24} color="#1C1C1E" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
@@ -443,6 +455,20 @@ export default function FeedScreen() {
                   >
                     <Ionicons name="map-outline" size={18} color="#1e293b" />
                     <Text style={styles.detailMetaText}>На карте</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.detailMeta}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!detailPost) {
+                        return;
+                      }
+                      setDetailVisible(false);
+                      handleBuildRoute(detailPost);
+                    }}
+                  >
+                    <Ionicons name="navigate-outline" size={18} color="#1e293b" />
+                    <Text style={styles.detailMetaText}>Маршрут</Text>
                   </TouchableOpacity>
                   <View style={styles.detailMeta}>
                     <Ionicons name="heart-outline" size={18} color="#FF2D55" />
