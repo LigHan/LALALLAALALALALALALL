@@ -6,24 +6,56 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const ROUTE_ICONS: Record<
-  string,
-  { focused: ComponentProps<typeof Ionicons>['name']; default: ComponentProps<typeof Ionicons>['name'] }
-> = {
-  index: { focused: 'home', default: 'home-outline' },
-  nearby: { focused: 'location', default: 'location-outline' },
-  profile: { focused: 'person', default: 'person-outline' },
+import { triggerMapSearch } from '@/lib/map-search';
+
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
+type TabConfig = {
+  name: string;
+  label: string;
+  iconFocused: IoniconName;
+  iconDefault: IoniconName;
+  position: 'left' | 'center' | 'right';
+  variation?: 'primary';
 };
 
-const QUICK_ACTIONS: Array<{
-  routeName: string;
-  label: string;
-  iconFocused: ComponentProps<typeof Ionicons>['name'];
-  iconDefault: ComponentProps<typeof Ionicons>['name'];
-  variation?: 'primary';
-}> = [
-  { routeName: 'map', label: 'Карта', iconFocused: 'map', iconDefault: 'map-outline' },
-  { routeName: 'search', label: 'Поиск места', iconFocused: 'search', iconDefault: 'search-outline', variation: 'primary' },
+const TAB_CONFIG: TabConfig[] = [
+  {
+    name: 'index',
+    label: 'Главная',
+    iconFocused: 'home',
+    iconDefault: 'home-outline',
+    position: 'left'
+  },
+  {
+    name: 'map',
+    label: 'Карта',
+    iconFocused: 'map',
+    iconDefault: 'map-outline',
+    position: 'left'
+  },
+  {
+    name: 'search',
+    label: 'Поиск',
+    iconFocused: 'search',
+    iconDefault: 'search-outline', 
+    position: 'center',
+    variation: 'primary'  
+  },
+  {
+    name: 'profile',
+    label: 'Профиль',
+    iconFocused: 'person',
+    iconDefault: 'person-outline',
+    position: 'right'
+  },
+  {
+    name: 'nearby',
+    label: 'Рядом',
+    iconFocused: 'location',
+    iconDefault: 'location-outline',
+    position: 'right'
+  }
 ];
 
 export default function TabLayout() {
@@ -46,128 +78,124 @@ export default function TabLayout() {
 function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const quickActionNames = new Set(QUICK_ACTIONS.map(action => action.routeName));
-  const primaryRoutes = state.routes.filter(route => !quickActionNames.has(route.name));
-  const splitIndex = Math.ceil(primaryRoutes.length / 2);
-  const leftRoutes = primaryRoutes.slice(0, splitIndex);
-  const rightRoutes = primaryRoutes.slice(splitIndex);
+  const currentRouteName = state.routes[state.index]?.name;
+  const isMapActive = currentRouteName === 'map';
 
-  const renderTabIcon = (routeName: string, routeKey: string) => {
-    const routeIndex = state.routes.findIndex(route => route.key === routeKey);
-    const isFocused = state.index === routeIndex;
-    const icons = ROUTE_ICONS[routeName] ?? { focused: 'ellipse', default: 'ellipse-outline' };
-    const iconName = isFocused ? icons.focused : icons.default;
-    const color = isFocused ? '#007AFF' : '#9E9E9E';
+  const renderTabButton = (tab: TabConfig) => {
+    const route = state.routes.find(r => r.name === tab.name);
+    if (!route) return null;
 
-    const onPress = () => {
-      const event = navigation.emit({
-        type: 'tabPress',
-        target: routeKey,
-        canPreventDefault: true,
-      });
-
-      if (!isFocused && !event.defaultPrevented) {
-        navigation.navigate(routeName as never);
-      }
-    };
-
-    const onLongPress = () => {
-      navigation.emit({
-        type: 'tabLongPress',
-        target: routeKey,
-      });
-    };
-
-    return (
-      <TouchableOpacity
-        key={routeKey}
-        accessibilityRole="button"
-        accessibilityState={isFocused ? { selected: true } : {}}
-        accessibilityLabel={descriptors[routeKey]?.options.tabBarAccessibilityLabel}
-        onPress={onPress}
-        onLongPress={onLongPress}
-        style={[styles.iconButton, isFocused && styles.iconButtonActive]}
-      >
-        <Ionicons name={iconName} size={24} color={color} />
-      </TouchableOpacity>
-    );
-  };
-
-  const renderQuickAction = ({
-    routeName,
-    label,
-    iconFocused,
-    iconDefault,
-    variation,
-  }: typeof QUICK_ACTIONS[number]) => {
-    const route = state.routes.find(r => r.name === routeName);
-    if (!route) {
-      return null;
-    }
     const routeIndex = state.routes.findIndex(r => r.key === route.key);
     const isFocused = state.index === routeIndex;
-    const iconName = isFocused ? iconFocused : iconDefault;
+    const iconName: IoniconName = isFocused ? tab.iconFocused : tab.iconDefault;
+
     const onPress = () => {
       const event = navigation.emit({
         type: 'tabPress',
         target: route.key,
         canPreventDefault: true,
       });
+
+      if (tab.name === 'search' && isMapActive) {
+        triggerMapSearch();
+        return;
+      }
+
       if (!isFocused && !event.defaultPrevented) {
-        navigation.navigate(routeName as never);
+        if (tab.name === 'profile') {
+          const isGuest = !(globalThis as { __CITY_GUIDE_USER__?: unknown }).__CITY_GUIDE_USER__;
+          if (isGuest) {
+            router.push('/login');
+            return;
+          }
+        }
+        navigation.navigate(tab.name as never);
       }
     };
 
-    return (
-      <TouchableOpacity key={routeName} style={styles.quickActionButton} onPress={onPress} activeOpacity={0.9}>
-        <View style={[styles.quickActionPill, variation === 'primary' && styles.primaryQuickAction]}>
-          <View style={styles.quickActionIconContainer}>
-            <Ionicons name={iconName} size={18} color={variation === 'primary' ? '#fff' : '#1c1c1e'} />
+    const onLongPress = () => {
+      navigation.emit({
+        type: 'tabLongPress',
+        target: route.key,
+      });
+    };
+
+    // Центральная кнопка поиска (широкая)
+    if (tab.position === 'center') {
+      return (
+        <TouchableOpacity
+          key={tab.name}
+          style={[
+            styles.searchButton,
+            tab.variation === 'primary' && styles.primarySearchButton,
+            isFocused && styles.searchButtonActive
+          ]}
+          onPress={onPress}
+          onLongPress={onLongPress}
+          activeOpacity={0.85}
+        >
+          <View style={styles.searchButtonContent}>
+            <Ionicons 
+              name={iconName} 
+              size={20} 
+              color={tab.variation === 'primary' ? '#fff' : '#1c1c1e'} 
+            />
+            <Text style={[
+              styles.searchButtonText,
+              tab.variation === 'primary' ? styles.searchButtonTextPrimary : styles.searchButtonTextSecondary
+            ]}>
+              {tab.label}
+            </Text>
           </View>
-          <Text
-            style={[
-              styles.quickActionLabel,
-              variation === 'primary' ? styles.quickActionLabelPrimary : styles.quickActionLabelSecondary,
-            ]}
-          >
-            {label}
-          </Text>
-        </View>
+        </TouchableOpacity>
+      );
+    }
+
+    // Обычные иконки (главная, профиль, рядом)
+    return (
+      <TouchableOpacity
+        key={tab.name}
+        accessibilityRole="button"
+        accessibilityState={isFocused ? { selected: true } : {}}
+        accessibilityLabel={descriptors[route.key]?.options.tabBarAccessibilityLabel}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        style={[styles.iconButton, isFocused && styles.iconButtonActive]}
+      >
+        <Ionicons 
+          name={iconName} 
+          size={24} 
+          color={isFocused ? '#007AFF' : '#9E9E9E'} 
+        />
       </TouchableOpacity>
     );
   };
 
+  // Группируем табы по позициям
+  const leftTabs = TAB_CONFIG.filter(tab => tab.position === 'left');
+  const centerTabs = TAB_CONFIG.filter(tab => tab.position === 'center');
+  const rightTabs = TAB_CONFIG.filter(tab => tab.position === 'right');
+
   return (
     <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      <View style={styles.islandShadow}>
-        <BlurView intensity={70} tint="light" style={styles.islandBlur}>
-          <View style={styles.islandOverlay} />
+      <View style={[styles.islandShadow, isMapActive && styles.mapIslandShadow]}>
+        <BlurView intensity={isMapActive ? 35 : 70} tint="light" style={styles.islandBlur}>
+          <View style={[styles.islandOverlay, isMapActive && styles.mapIslandOverlay]} />
           <View style={styles.islandContent}>
-            <View style={styles.iconGroup}>{leftRoutes.map(route => renderTabIcon(route.name, route.key))}</View>
-          <View style={styles.centerActions}>
-            <TouchableOpacity
-              style={styles.searchPlaceholder}
-              activeOpacity={0.85}
-              onPress={() => navigation.navigate('search' as never)}
-            >
-              <Ionicons name="search" size={18} color="#1c1c1e" />
-            </TouchableOpacity>
-          </View>
-            <TouchableOpacity
-              style={styles.profileShortcut}
-              activeOpacity={0.85}
-              onPress={() => {
-                const isGuest = !(globalThis as { __CITY_GUIDE_USER__?: unknown }).__CITY_GUIDE_USER__;
-                if (isGuest) {
-                  router.push('/login');
-                } else {
-                  navigation.navigate('profile' as never);
-                }
-              }}
-            >
-              <Ionicons name="person-circle" size={26} color="#fff" />
-            </TouchableOpacity>
-            <View style={styles.iconGroup}>{rightRoutes.map(route => renderTabIcon(route.name, route.key))}</View>
+            {/* Левая группа: Главная */}
+            <View style={styles.leftGroup}>
+              {leftTabs.map(renderTabButton)}
+            </View>
+
+            {/* Центральная группа: Поиск */}
+            <View style={styles.centerGroup}>
+              {centerTabs.map(renderTabButton)}
+            </View>
+
+            {/* Правая группа: Профиль и Рядом */}
+            <View style={styles.rightGroup}>
+              {rightTabs.map(renderTabButton)}
+            </View>
           </View>
         </BlurView>
       </View>
@@ -196,6 +224,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 18 },
     elevation: 16,
   },
+  mapIslandShadow: {
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 10,
+  },
   islandBlur: {
     borderRadius: 40,
     overflow: 'hidden',
@@ -204,106 +237,86 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(255,255,255,0.55)',
   },
+  mapIslandOverlay: {
+    backgroundColor: 'rgba(255,255,255,0.32)',
+  },
   islandContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 12,
-    gap: 12,
+    gap: 8,
   },
-  iconGroup: {
+  leftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  centerActions: {
+    justifyContent: 'flex-start',
     flex: 1,
-    flexDirection: 'row',
+    gap: 8,
+  },
+  centerGroup: {
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 1,
+    marginHorizontal: 8,
+  },
+  rightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    flex: 1,
+    gap: 8,
   },
   iconButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
   iconButtonActive: {
     backgroundColor: 'rgba(0, 122, 255, 0.12)',
   },
-  quickActions: {
-    display: 'none',
+  searchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    minWidth: 130,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(12,23,42,0.12)',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  searchPlaceholder: {
-    flex: 1,
+  primarySearchButton: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+    shadowColor: '#007AFF',
+    shadowOpacity: 0.3,
+  },
+  searchButtonActive: {
+    backgroundColor: '#0056CC',
+  },
+  searchButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(12,23,42,0.12)',
   },
-  searchPlaceholderText: {
-    fontSize: 13,
-    color: '#1c1c1e',
+  searchButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
-  profileShortcut: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(0, 122, 255, 0.65)',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  profileShortcutLabel: {
+  searchButtonTextPrimary: {
     color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
   },
-  quickActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  quickActionPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  primaryQuickAction: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 28,
-  },
-  quickActionIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-  },
-  quickActionLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  quickActionLabelPrimary: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  quickActionLabelSecondary: {
+  searchButtonTextSecondary: {
     color: '#1c1c1e',
   },
 });

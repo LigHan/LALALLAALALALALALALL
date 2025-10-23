@@ -13,57 +13,67 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 
-import { posts as sourcePosts, stories, type Post, type Story } from '@/constants/content';
+import {
+  posts as sourcePosts,
+  stories,
+  normalizePosts,
+  formatCompactNumber,
+  type NormalizedPost,
+  type Story
+} from '@/constants/content';
+import { triggerMapRoute, triggerMapSearch } from '@/lib/map-search';
+
+type FeedPost = NormalizedPost;
 
 export default function FeedScreen() {
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>(sourcePosts);
-  const [activePost, setActivePost] = useState<Post | null>(null);
+const [posts, setPosts] = useState<FeedPost[]>(() => normalizePosts(sourcePosts));
+  const [activePost, setActivePost] = useState<FeedPost | null>(null);
   const [isScheduleVisible, setScheduleVisible] = useState(false);
-  const [reviewsPost, setReviewsPost] = useState<Post | null>(null);
+  const [reviewsPost, setReviewsPost] = useState<FeedPost | null>(null);
   const [isReviewsVisible, setReviewsVisible] = useState(false);
   const [activeStory, setActiveStory] = useState<Story | null>(null);
   const [isStoryVisible, setStoryVisible] = useState(false);
   const [storyLikes, setStoryLikes] = useState<Record<string, boolean>>({});
-  const [detailPost, setDetailPost] = useState<Post | null>(null);
+  const [detailPost, setDetailPost] = useState<FeedPost | null>(null);
   const [isDetailVisible, setDetailVisible] = useState(false);
 
-  const handleLike = (id: string) => {
+  const handleLike = (uid: string) => {
     setPosts(prev =>
-      prev.map(p => (p.id === id ? { ...p, likes: p.likes + 1 } : p))
+      prev.map(p => (p.uid === uid ? { ...p, likes: p.likes + 1 } : p))
     );
-  };
-  const handleComment = (id: string) => {
-    // TODO: navigate to comments or open modal
-    console.log(`comment on ${id}`);
   };
   const handleFavorite = (id: string) => {
     // TODO: persist favorites or show feedback
     console.log(`favorite ${id}`);
   };
-  const handleOpenMap = (id: string) => {
-    // TODO: navigate to map detail
-    console.log(`open map for ${id}`);
+  const handleOpenMap = (post: FeedPost) => {
+    router.push('/map');
+    triggerMapSearch(post.address);
+  };
+  const handleBuildRoute = (post: FeedPost) => {
+    router.push('/map');
+    triggerMapRoute(post.address);
   };
   const handleDownload = (id: string) => {
     // TODO: trigger download or share sheet
     console.log(`download for ${id}`);
   };
-  const handleOpenHours = (post: Post) => {
+  const handleOpenHours = (post: FeedPost) => {
     setActivePost(post);
     setScheduleVisible(true);
   };
   const handleCloseHours = () => {
     setScheduleVisible(false);
   };
-  const handleOpenReviews = (post: Post) => {
+  const handleOpenReviews = (post: FeedPost) => {
     setReviewsPost(post);
     setReviewsVisible(true);
   };
   const handleCloseReviews = () => {
     setReviewsVisible(false);
   };
-  const handleOpenProfile = (post: Post) => {
+  const handleOpenProfile = (post: FeedPost) => {
     router.push({ pathname: '/company/[id]', params: { id: post.id } });
   };
   const handleOpenStory = (story: Story) => {
@@ -87,7 +97,7 @@ export default function FeedScreen() {
       [storyId]: !prev[storyId],
     }));
   };
-  const handleOpenDetail = (post: Post) => {
+  const handleOpenDetail = (post: FeedPost) => {
     setDetailPost(post);
     setDetailVisible(true);
   };
@@ -155,7 +165,7 @@ export default function FeedScreen() {
     <View style={styles.container}>
       <FlatList
         data={posts}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.uid}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
@@ -221,9 +231,20 @@ export default function FeedScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.userCaption}>от {item.user}</Text>
+              <TouchableOpacity
+                style={styles.addressRow}
+                onPress={(event: GestureResponderEvent) => {
+                  event.stopPropagation();
+                  handleOpenMap(item);
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="location-outline" size={16} color="#2563eb" />
+                <Text style={styles.addressText}>{item.address}</Text>
+              </TouchableOpacity>
               <View style={styles.tagRow}>
                 {item.tags.map(tag => (
-                  <View key={`${item.id}-${tag}`} style={styles.tagChip}>
+                  <View key={`${item.uid}-${tag}`} style={styles.tagChip}>
                     <Text style={styles.tagText}>#{tag}</Text>
                   </View>
                 ))}
@@ -234,30 +255,21 @@ export default function FeedScreen() {
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
                     event.stopPropagation();
-                    handleLike(item.id);
+                    handleLike(item.uid);
                   }}
                   style={styles.likeBtn}
                 >
                   <Ionicons name="heart-outline" size={24} color="#FF2D55" />
-                  <Text style={styles.likeCount}>{item.likes}</Text>
+                  <Text style={styles.likeCount}>{formatCompactNumber(item.likes)}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
                     event.stopPropagation();
-                    handleComment(item.id);
+                    handleBuildRoute(item);
                   }}
                   style={styles.actionButton}
                 >
-                  <Ionicons name="chatbubble-ellipses-outline" size={24} color="#1C1C1E" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={(event: GestureResponderEvent) => {
-                    event.stopPropagation();
-                    handleOpenMap(item.id);
-                  }}
-                  style={styles.actionButton}
-                >
-                  <Ionicons name="map-outline" size={24} color="#1C1C1E" />
+                  <Ionicons name="navigate-outline" size={24} color="#1C1C1E" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
@@ -400,6 +412,20 @@ export default function FeedScreen() {
                   {detailPost.reviews[0]?.comment ??
                     'Здесь вы найдете лучшие впечатления города: маршруты, атмосферные пространства и события рядом.'}
                 </Text>
+                <TouchableOpacity
+                  style={styles.detailAddressRow}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    if (!detailPost) {
+                      return;
+                    }
+                    setDetailVisible(false);
+                    handleOpenMap(detailPost);
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color="#2563eb" />
+                  <Text style={styles.detailAddressText}>{detailPost.address}</Text>
+                </TouchableOpacity>
                 <View style={styles.detailMetaRow}>
                   <TouchableOpacity
                     style={styles.detailMeta}
@@ -417,9 +443,37 @@ export default function FeedScreen() {
                       {detailPost.workingHours[0]?.value ?? 'Нет данных'}
                     </Text>
                   </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.detailMeta}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!detailPost) {
+                        return;
+                      }
+                      setDetailVisible(false);
+                      handleOpenMap(detailPost);
+                    }}
+                  >
+                    <Ionicons name="map-outline" size={18} color="#1e293b" />
+                    <Text style={styles.detailMetaText}>На карте</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.detailMeta}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!detailPost) {
+                        return;
+                      }
+                      setDetailVisible(false);
+                      handleBuildRoute(detailPost);
+                    }}
+                  >
+                    <Ionicons name="navigate-outline" size={18} color="#1e293b" />
+                    <Text style={styles.detailMetaText}>Маршрут</Text>
+                  </TouchableOpacity>
                   <View style={styles.detailMeta}>
                     <Ionicons name="heart-outline" size={18} color="#FF2D55" />
-                    <Text style={styles.detailMetaText}>{`${detailPost.likes} отметок`}</Text>
+                    <Text style={styles.detailMetaText}>{`${formatCompactNumber(detailPost.likes)} отметок`}</Text>
                   </View>
                 </View>
               </View>
@@ -562,6 +616,17 @@ const styles = StyleSheet.create({
     color: '#B45309',
   },
   userCaption: { color: '#777', marginTop: 4 },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#2563eb',
+    textDecorationLine: 'underline',
+  },
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -751,11 +816,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#1f2937',
   },
+  detailAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+  },
+  detailAddressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
   detailMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
+    justifyContent: 'flex-start',
+    gap: 12,
+    flexWrap: 'wrap',
   },
   detailMeta: {
     flexDirection: 'row',
