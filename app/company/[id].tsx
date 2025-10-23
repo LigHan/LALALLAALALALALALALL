@@ -16,7 +16,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import { normalizePost, posts } from '@/constants/content';
+import { formatCompactNumber, normalizePost, posts } from '@/constants/content';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -69,8 +69,8 @@ export default function CompanyScreen() {
   const companyStats = useMemo(
     () =>
       [
-        { label: 'Подписчиков', value: formatNumber(company.followers), icon: 'people-outline' as IoniconName },
-        { label: 'Всего лайков', value: formatNumber(company.totalLikes), icon: 'heart' as IoniconName },
+        { label: 'Подписчиков', value: formatCompactNumber(company.followers), icon: 'people-outline' as IoniconName },
+        { label: 'Всего лайков', value: formatCompactNumber(company.totalLikes), icon: 'heart' as IoniconName },
       ],
     [company.followers, company.totalLikes]
   );
@@ -597,6 +597,3 @@ const styles = StyleSheet.create({
   },
 });
 
-function formatNumber(value: number) {
-  return value.toLocaleString('ru-RU');
-}

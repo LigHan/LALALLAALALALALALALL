@@ -51,6 +51,7 @@ export type Post = {
 };
 
 export type NormalizedPost = Omit<Post, 'likes' | 'totalLikes' | 'followers'> & {
+  uid: string;
   likes: number;
   totalLikes: number;
   followers: number;
@@ -83,9 +84,10 @@ export function parseNumericValue(value: NumericValue): number {
   return 0;
 }
 
-export function normalizePost(post: Post): NormalizedPost {
+export function normalizePost(post: Post, index = 0): NormalizedPost {
   return {
     ...post,
+    uid: `${post.id}-${index}`,
     likes: parseNumericValue(post.likes),
     totalLikes: parseNumericValue(post.totalLikes),
     followers: parseNumericValue(post.followers)
@@ -93,7 +95,28 @@ export function normalizePost(post: Post): NormalizedPost {
 }
 
 export function normalizePosts(list: Post[]): NormalizedPost[] {
-  return list.map(normalizePost);
+  return list.map((post, index) => normalizePost(post, index));
+}
+
+export function formatCompactNumber(value: number): string {
+  const abs = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+
+  const formatWithSuffix = (num: number, suffix: string) => {
+    const fixed = num.toFixed(1);
+    const normalized = fixed.replace(/\.0$/, '').replace('.', ',');
+    return `${sign}${normalized} ${suffix}`;
+  };
+
+  if (abs >= 1_000_000) {
+    return formatWithSuffix(abs / 1_000_000, 'млн');
+  }
+
+  if (abs >= 1_000) {
+    return formatWithSuffix(abs / 1_000, 'тыс');
+  }
+
+  return new Intl.NumberFormat('ru-RU').format(value);
 }
 
 export const posts: Post[] = [
@@ -153,7 +176,7 @@ export const posts: Post[] = [
     userAvatar: 'https://sun9-56.userapi.com/s/v1/if1/1wBsSjoL_DE-ioMffbJvgvW-h4rjp9LcNr2wbBYB4oEuK8fotKx2oHQw0SJcFHziiWgQWaEW.jpg?quality=96&as=32x21,48x32,72x48,108x72,160x107,240x160,360x240,480x320,540x360,640x427,720x480,1080x720,1280x853,1350x900&from=bu&cs=1350x0',
     userHandle: 'vov_museum_donetsk',
     place: 'Музей Великой Отечественной войны',
-    address: 'Музей Великой Отечественной войны, Донецк',
+    address: 'Музей Великой Отечественной войны,  Донецк',
     image: 'https://cdn.culture.ru/images/795e55ba-477e-5bc6-9c0b-3d4b8328e08b',
     gallery: [
       'https://sun9-5.userapi.com/s/v1/if2/dkBaRZWYkiy52ClKSCYTHhX-BZjpq2XBJmnW4cLUXpdOz6OgVYbvWEEQCmF1vdsU7eAkojRdh6DDiiC-FAq8MHet.jpg?quality=96&as=32x21,48x32,72x48,108x72,160x107,240x160,360x240,480x320,540x360,640x427,720x480,1080x720,1280x853,1440x960,2560x1707&from=bu&cs=2560x0',

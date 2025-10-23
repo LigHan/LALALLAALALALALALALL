@@ -17,6 +17,7 @@ import {
   posts as sourcePosts,
   stories,
   normalizePosts,
+  formatCompactNumber,
   type NormalizedPost,
   type Story
 } from '@/constants/content';
@@ -26,7 +27,7 @@ type FeedPost = NormalizedPost;
 
 export default function FeedScreen() {
   const router = useRouter();
-  const [posts, setPosts] = useState<FeedPost[]>(() => normalizePosts(sourcePosts));
+const [posts, setPosts] = useState<FeedPost[]>(() => normalizePosts(sourcePosts));
   const [activePost, setActivePost] = useState<FeedPost | null>(null);
   const [isScheduleVisible, setScheduleVisible] = useState(false);
   const [reviewsPost, setReviewsPost] = useState<FeedPost | null>(null);
@@ -37,9 +38,9 @@ export default function FeedScreen() {
   const [detailPost, setDetailPost] = useState<FeedPost | null>(null);
   const [isDetailVisible, setDetailVisible] = useState(false);
 
-  const handleLike = (id: string) => {
+  const handleLike = (uid: string) => {
     setPosts(prev =>
-      prev.map(p => (p.id === id ? { ...p, likes: p.likes + 1 } : p))
+      prev.map(p => (p.uid === uid ? { ...p, likes: p.likes + 1 } : p))
     );
   };
   const handleFavorite = (id: string) => {
@@ -164,7 +165,7 @@ export default function FeedScreen() {
     <View style={styles.container}>
       <FlatList
         data={posts}
-        keyExtractor={item => item.id}
+        keyExtractor={item => item.uid}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
@@ -243,7 +244,7 @@ export default function FeedScreen() {
               </TouchableOpacity>
               <View style={styles.tagRow}>
                 {item.tags.map(tag => (
-                  <View key={`${item.id}-${tag}`} style={styles.tagChip}>
+                  <View key={`${item.uid}-${tag}`} style={styles.tagChip}>
                     <Text style={styles.tagText}>#{tag}</Text>
                   </View>
                 ))}
@@ -254,12 +255,12 @@ export default function FeedScreen() {
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
                     event.stopPropagation();
-                    handleLike(item.id);
+                    handleLike(item.uid);
                   }}
                   style={styles.likeBtn}
                 >
                   <Ionicons name="heart-outline" size={24} color="#FF2D55" />
-                  <Text style={styles.likeCount}>{item.likes}</Text>
+                  <Text style={styles.likeCount}>{formatCompactNumber(item.likes)}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
@@ -472,7 +473,7 @@ export default function FeedScreen() {
                   </TouchableOpacity>
                   <View style={styles.detailMeta}>
                     <Ionicons name="heart-outline" size={18} color="#FF2D55" />
-                    <Text style={styles.detailMetaText}>{`${detailPost.likes} отметок`}</Text>
+                    <Text style={styles.detailMetaText}>{`${formatCompactNumber(detailPost.likes)} отметок`}</Text>
                   </View>
                 </View>
               </View>

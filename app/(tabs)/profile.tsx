@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { normalizePost, posts } from '@/constants/content';
+import { formatCompactNumber, normalizePost, posts } from '@/constants/content';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import {
@@ -636,5 +636,5 @@ const styles = StyleSheet.create({
 });
 
 function formatNumber(value: number) {
-  return value.toLocaleString('ru-RU');
+  return formatCompactNumber(value);
 }

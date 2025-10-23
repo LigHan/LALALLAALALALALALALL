@@ -1,306 +1,268 @@
-import { useState, useRef, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  TextInput,
-  FlatList,
-  TouchableOpacity,
-  Image,
   Animated,
+  FlatList,
   Keyboard,
   Modal,
   Pressable,
+  StyleSheet,
   Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+
+import {
+  posts as sourcePosts,
+  normalizePosts,
+  formatCompactNumber,
+  type NormalizedPost
+} from '@/constants/content';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
+import { triggerMapRoute, triggerMapSearch } from '@/lib/map-search';
 
-// Mock данные для поиска
-const SEARCH_DATA = [
-  {
-    id: '1',
-    name: 'Парк Горького',
-    category: 'Парк',
-    address: 'ул. Крымский Вал, 9',
-    rating: 4.7,
-    reviews: 1243,
-    image: 'https://picsum.photos/300/200?park',
-    isOpen: true,
-    distance: '0.8 км',
-  },
-  {
-    id: '2',
-    name: 'Кофейня "Уют"',
-    category: 'Кафе',
-    address: 'ул. Арбат, 25',
-    rating: 4.5,
-    reviews: 892,
-    image: 'https://picsum.photos/300/200?coffee',
-    isOpen: true,
-    distance: '1.2 км',
-  },
-  {
-    id: '3',
-    name: 'Музей современного искусства',
-    category: 'Музей',
-    address: 'ул. Петровка, 25',
-    rating: 4.8,
-    reviews: 567,
-    image: 'https://picsum.photos/300/200?museum',
-    isOpen: false,
-    distance: '2.1 км',
-  },
-  {
-    id: '4',
-    name: 'Торговый центр "Европейский"',
-    category: 'Шоппинг',
-    address: 'пл. Киевского Вокзала, 2',
-    rating: 4.3,
-    reviews: 2341,
-    image: 'https://picsum.photos/300/200?mall',
-    isOpen: true,
-    distance: '3.5 км',
-  },
-  {
-    id: '5',
-    name: 'Ресторан "Белый лебедь"',
-    category: 'Ресторан',
-    address: 'ул. Тверская, 15',
-    rating: 4.9,
-    reviews: 678,
-    image: 'https://picsum.photos/300/200?restaurant',
-    isOpen: true,
-    distance: '0.5 км',
-  },
-];
+type SearchPost = NormalizedPost;
 
-const CATEGORIES = [
-  { id: 'all', name: 'Все', icon: 'apps' },
-  { id: 'cafe', name: 'Кафе', icon: 'cafe' },
-  { id: 'park', name: 'Парки', icon: 'leaf' },
-  { id: 'museum', name: 'Музеи', icon: 'school' },
-  { id: 'shop', name: 'Магазины', icon: 'cart' },
-  { id: 'restaurant', name: 'Рестораны', icon: 'restaurant' },
-];
+const allPostsNormalized = normalizePosts(sourcePosts);
+
+const categoryOptions = (() => {
+  const unique = new Map<string, string>();
+  for (const post of allPostsNormalized) {
+    for (const tag of post.tags) {
+      const key = tag.toLowerCase();
+      if (!unique.has(key)) {
+        unique.set(key, tag);
+      }
+    }
+  }
+  return [
+    { id: 'all', name: 'Все', icon: 'apps' as const },
+    ...Array.from(unique.entries()).map(([id, name]) => ({ id, name, icon: 'pricetag-outline' as const }))
+  ];
+})();
 
 export default function SearchScreen() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState(SEARCH_DATA);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [isSearching, setIsSearching] = useState(false);
-  const [activePlace, setActivePlace] = useState<typeof SEARCH_DATA[0] | null>(null);
-  const [isDetailVisible, setDetailVisible] = useState(false);
-  
+  const router = useRouter();
   const searchInputRef = useRef<TextInput>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  const handleSearch = (text: string) => {
-    setSearchQuery(text);
-    
-    if (text.trim() === '') {
-      setSearchResults(SEARCH_DATA);
-      setIsSearching(false);
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start();
-    } else {
-      const filtered = SEARCH_DATA.filter(item =>
-        item.name.toLowerCase().includes(text.toLowerCase()) ||
-        item.category.toLowerCase().includes(text.toLowerCase()) ||
-        item.address.toLowerCase().includes(text.toLowerCase())
-      );
-      setSearchResults(filtered);
-      setIsSearching(true);
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
-  };
+  const [postsData, setPostsData] = useState<SearchPost[]>(allPostsNormalized);
+  const [searchResults, setSearchResults] = useState<SearchPost[]>(allPostsNormalized);
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchActive, setSearchActive] = useState(false);
+  const [activePost, setActivePost] = useState<SearchPost | null>(null);
+  const [isDetailVisible, setDetailVisible] = useState(false);
 
-  const handleCategorySelect = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    if (categoryId === 'all') {
-      setSearchResults(SEARCH_DATA);
-    } else {
-      const filtered = SEARCH_DATA.filter(item =>
-        item.category.toLowerCase().includes(
-          CATEGORIES.find(cat => cat.id === categoryId)?.name.toLowerCase() || ''
-        )
-      );
-      setSearchResults(filtered);
-    }
+  const filterPosts = useCallback((data: SearchPost[], category: string, query: string) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return data.filter(post => {
+      const matchesCategory =
+        category === 'all' || post.tags.some(tag => tag.toLowerCase() === category);
+
+      if (!matchesCategory) {
+        return false;
+      }
+
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const haystack = [
+        post.place,
+        post.user,
+        post.address,
+        post.bio,
+        ...post.tags
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      return haystack.includes(normalizedQuery);
+    });
+  }, []);
+
+  useEffect(() => {
+    const filtered = filterPosts(postsData, selectedCategory, searchQuery);
+    setSearchResults(filtered);
+    Animated.timing(fadeAnim, {
+      toValue: filtered.length > 0 ? 1 : 0,
+      duration: filtered.length > 0 ? 300 : 200,
+      useNativeDriver: true,
+    }).start();
+  }, [postsData, selectedCategory, searchQuery, fadeAnim, filterPosts]);
+
+  useEffect(() => {
+    setIsSearching(searchQuery.trim().length > 0);
+  }, [searchQuery]);
+
+  const handleSearchChange = (text: string) => {
+    setSearchQuery(text);
   };
 
   const clearSearch = () => {
     setSearchQuery('');
-    setSearchResults(SEARCH_DATA);
-    setIsSearching(false);
-    setSelectedCategory('all');
     Keyboard.dismiss();
-    Animated.timing(fadeAnim, {
-      toValue: 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
   };
 
-  useEffect(() => {
-    if (!isDetailVisible && activePlace) {
-      const timeout = setTimeout(() => setActivePlace(null), 220);
-      return () => clearTimeout(timeout);
-    }
-  }, [isDetailVisible, activePlace]);
+  const handleCategorySelect = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+  };
 
-  const handleCloseDetails = () => {
+  const openInMap = (post: SearchPost) => {
+    router.push('/map');
+    triggerMapSearch(post.address);
+  };
+
+  const buildRoute = (post: SearchPost) => {
+    router.push('/map');
+    triggerMapRoute(post.address);
+  };
+
+  const handleLike = (uid: string) => {
+    setPostsData(prev => prev.map(post => (post.uid === uid ? { ...post, likes: post.likes + 1 } : post)));
+  };
+
+  const handleOpenDetail = (post: SearchPost) => {
+    setActivePost(post);
+    setDetailVisible(true);
+  };
+
+  const handleCloseDetail = () => {
     setDetailVisible(false);
   };
 
-  const renderPlaceItem = ({ item }: { item: typeof SEARCH_DATA[0] }) => (
+  const renderPost = ({ item }: { item: SearchPost }) => (
     <TouchableOpacity
-      style={styles.placeCard}
-      activeOpacity={0.9}
-      onPress={() => {
-        setActivePlace(item);
-        setDetailVisible(true);
-      }}
+      activeOpacity={0.92}
+      style={styles.post}
+      onPress={() => handleOpenDetail(item)}
     >
-      <Image source={{ uri: item.image }} style={styles.placeImage} />
-      <View style={styles.placeInfo}>
-        <View style={styles.placeHeader}>
-          <ThemedText type="defaultSemiBold" style={styles.placeName}>
-            {item.name}
-          </ThemedText>
-          <View style={styles.ratingContainer}>
-            <Ionicons name="star" size={14} color="#FFD700" />
-            <ThemedText style={styles.rating}>{item.rating}</ThemedText>
+      <Image source={{ uri: item.image }} style={styles.image} />
+      <View style={styles.info}>
+        <View style={styles.authorRow}>
+          <TouchableOpacity activeOpacity={0.8}>
+            <Image source={{ uri: item.userAvatar }} style={styles.authorAvatar} />
+          </TouchableOpacity>
+          <View style={styles.authorDetails}>
+            <Text style={styles.authorName}>{item.user}</Text>
+            <Text style={styles.authorHandle}>@{item.userHandle}</Text>
           </View>
         </View>
-        
-        <ThemedText style={styles.placeCategory}>{item.category}</ThemedText>
-        <ThemedText style={styles.placeAddress}>{item.address}</ThemedText>
+        <View style={styles.placeRow}>
+          <Text style={styles.place}>{item.place}</Text>
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={16} color="#FFB800" />
+            <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+          </View>
+        </View>
+        <Text style={styles.userCaption}>от {item.user}</Text>
+        <TouchableOpacity
+          style={styles.addressRow}
+          activeOpacity={0.85}
+          onPress={() => openInMap(item)}
+        >
+          <Ionicons name="location-outline" size={16} color="#2563eb" />
+          <Text style={styles.addressText}>{item.address}</Text>
+        </TouchableOpacity>
         <View style={styles.tagRow}>
-          <View style={styles.tagChip}>
-            <Text style={styles.tagText}>#{item.category.toLowerCase()}</Text>
-          </View>
-          <View style={styles.tagChip}>
-            <Text style={styles.tagText}>#{item.distance.replace(/\s+/g, '')}</Text>
-          </View>
+          {item.tags.map(tag => (
+            <View key={`${item.uid}-${tag}`} style={styles.tagChip}>
+              <Text style={styles.tagText}>#{tag}</Text>
+            </View>
+          ))}
         </View>
-        
-        <View style={styles.placeFooter}>
-          <View style={[
-            styles.statusBadge,
-            { backgroundColor: item.isOpen ? '#4CD964' : '#FF3B30' }
-          ]}>
-            <ThemedText style={styles.statusText}>
-              {item.isOpen ? 'Открыто' : 'Закрыто'}
-            </ThemedText>
-          </View>
-          <View style={styles.distanceContainer}>
-            <Ionicons name="location-outline" size={14} color="#8E8E93" />
-            <ThemedText style={styles.distance}>{item.distance}</ThemedText>
-          </View>
+      </View>
+      <View style={styles.actions}>
+        <View style={styles.actionGroup}>
+          <TouchableOpacity
+            onPress={() => handleLike(item.uid)}
+            style={styles.likeBtn}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="heart-outline" size={24} color="#FF2D55" />
+            <Text style={styles.likeCount}>{formatCompactNumber(item.likes)}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => buildRoute(item)}
+            style={styles.actionButton}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="navigate-outline" size={24} color="#1C1C1E" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.actionButton} activeOpacity={0.85}>
+            <Ionicons name="download-outline" size={24} color="#1C1C1E" />
+          </TouchableOpacity>
         </View>
+        <TouchableOpacity style={[styles.actionButton, styles.favoriteButton]} activeOpacity={0.85}>
+          <Ionicons name="bookmark-outline" size={24} color="#1C1C1E" />
+        </TouchableOpacity>
       </View>
     </TouchableOpacity>
   );
 
   return (
     <ThemedView style={styles.container}>
-      {/* Хедер поиска */}
       <View style={styles.searchHeader}>
-        <View style={styles.searchContainer}>
-          <Ionicons 
-            name="search" 
-            size={20} 
-            color="#8e8e93"
-            style={styles.searchIcon}
-          />
+        <View style={[styles.searchContainer, searchActive && styles.searchContainerActive]}>
+          <Ionicons name="search" size={20} color="#475569" style={styles.searchIcon} />
           <TextInput
             ref={searchInputRef}
             style={styles.searchInput}
-            placeholder="Поиск мест, ресторанов, мероприятий..."
-            placeholderTextColor="#8e8e93"
+            placeholder="Поиск мест, событий, авторов..."
+            placeholderTextColor="#94a3b8"
             value={searchQuery}
-            onChangeText={handleSearch}
+            onChangeText={handleSearchChange}
+            onFocus={() => setSearchActive(true)}
+            onBlur={() => setSearchActive(false)}
             returnKeyType="search"
-            autoCorrect={false}
+            onSubmitEditing={Keyboard.dismiss}
           />
           {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
-              <Ionicons 
-                name="close-circle" 
-                size={20}
-                color="#8e8e93"
-              />
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton} hitSlop={8}>
+              <Ionicons name="close-circle" size={20} color="#94a3b8" />
             </TouchableOpacity>
           )}
         </View>
-      </View>
-
-      {/* Категории */}
-      <View style={styles.categoriesSection}>
         <FlatList
           horizontal
-          data={CATEGORIES}
-          keyExtractor={(item) => item.id}
+          data={categoryOptions}
+          keyExtractor={item => item.id}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesList}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={[
-                styles.categoryButton,
-                selectedCategory === item.id && styles.categoryButtonActive
-              ]}
+              style={[styles.categoryChip, selectedCategory === item.id && styles.categoryChipActive]}
               onPress={() => handleCategorySelect(item.id)}
             >
-              <Ionicons 
-                name={item.icon as any} 
-                size={18} 
-                color={selectedCategory === item.id ? '#007AFF' : '#6c6c70'}
+              <Ionicons
+                name={item.icon}
+                size={16}
+                color={selectedCategory === item.id ? '#fff' : '#2563eb'}
               />
-              <ThemedText style={[
-                styles.categoryText,
-                selectedCategory === item.id && styles.categoryTextActive
-              ]}>
+              <Text style={selectedCategory === item.id ? styles.categoryChipTextActive : styles.categoryChipText}>
                 {item.name}
-              </ThemedText>
+              </Text>
             </TouchableOpacity>
           )}
         />
       </View>
 
-      {/* Результаты поиска */}
       <Animated.View style={[styles.resultsContainer, { opacity: fadeAnim }]}>
-        <View style={styles.resultsHeader}>
-          <ThemedText type="defaultSemiBold" style={styles.resultsTitle}>
-            Найдено {searchResults.length} мест
-          </ThemedText>
-          {searchQuery.length > 0 && (
-            <ThemedText style={styles.searchQueryText}>
-              по запросу "{searchQuery}"
-            </ThemedText>
-          )}
-        </View>
-
         <FlatList
           data={searchResults}
-          keyExtractor={(item) => item.id}
-          renderItem={renderPlaceItem}
+          keyExtractor={item => item.uid}
+          renderItem={renderPost}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.resultsList}
+          contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons 
-                name="search-outline" 
-                size={64} 
-                color="#c6c6c8"
-              />
+              <Ionicons name="search-outline" size={64} color="#c6c6c8" />
               <ThemedText type="defaultSemiBold" style={styles.emptyTitle}>
                 Ничего не найдено
               </ThemedText>
@@ -312,82 +274,91 @@ export default function SearchScreen() {
         />
       </Animated.View>
 
-      {/* Подсказка при пустом поиске */}
-      {!isSearching && (
-        <View style={styles.placeholderContainer}>
-          <Ionicons 
-            name="search" 
-            size={48} 
-            color="#c6c6c8"
-          />
-          <ThemedText type="defaultSemiBold" style={styles.placeholderTitle}>
-            Найдите интересные места
-          </ThemedText>
-          <ThemedText style={styles.placeholderText}>
-            Ищите рестораны, парки, музеи и другие места вокруг вас
-          </ThemedText>
-        </View>
-      )}
+      <View pointerEvents="none" style={styles.placeholderWrapper}>
+        {!isSearching && searchResults.length === postsData.length && (
+          <View style={styles.placeholderContainer}>
+            <Ionicons name="search" size={48} color="#c6c6c8" />
+            <ThemedText type="defaultSemiBold" style={styles.placeholderTitle}>
+              Найдите интересные места
+            </ThemedText>
+            <ThemedText style={styles.placeholderText}>
+              Ищите рестораны, парки, музеи и другие места вокруг вас
+            </ThemedText>
+          </View>
+        )}
+      </View>
 
       <Modal
         visible={isDetailVisible}
         transparent
         animationType="fade"
-        onRequestClose={handleCloseDetails}
+        onRequestClose={handleCloseDetail}
       >
-        <Pressable style={styles.detailOverlay} onPress={handleCloseDetails}>
-          {activePlace && (
+        <Pressable style={styles.detailOverlay} onPress={handleCloseDetail}>
+          {activePost && (
             <Pressable style={styles.detailCard} onPress={event => event.stopPropagation()}>
-              <Image source={{ uri: activePlace.image }} style={styles.detailImage} />
+              <Image source={{ uri: activePost.image }} style={styles.detailImage} />
               <View style={styles.detailContent}>
                 <View style={styles.detailHeader}>
-                  <Text style={styles.detailTitle}>{activePlace.name}</Text>
+                  <Text style={styles.detailTitle}>{activePost.place}</Text>
                   <View style={styles.detailRating}>
                     <Ionicons name="star" size={18} color="#FFB800" />
-                    <Text style={styles.detailRatingText}>{activePlace.rating.toFixed(1)}</Text>
+                    <Text style={styles.detailRatingText}>{activePost.rating.toFixed(1)}</Text>
                   </View>
                 </View>
-                <Text style={styles.detailSubtitle}>{activePlace.category}</Text>
-                <Text style={styles.detailAddress}>{activePlace.address}</Text>
-                <View style={styles.detailTagRow}>
-                  <View style={styles.detailTagChip}>
-                    <Text style={styles.detailTagText}>#{activePlace.category.toLowerCase()}</Text>
-                  </View>
-                  <View style={styles.detailTagChip}>
-                    <Text style={styles.detailTagText}>
-                      #{activePlace.distance.replace(/\s+/g, '')}
-                    </Text>
-                  </View>
-                  <View style={styles.detailTagChip}>
-                    <Text style={styles.detailTagText}>
-                      {activePlace.isOpen ? '#open' : '#closed'}
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.detailMetaRow}>
-                  <View style={styles.detailMeta}>
-                    <Ionicons name="location-outline" size={18} color="#1e293b" />
-                    <Text style={styles.detailMetaText}>{activePlace.distance} от вас</Text>
-                  </View>
-                  <View style={styles.detailMeta}>
-                    <Ionicons
-                      name={activePlace.isOpen ? 'checkmark-circle' : 'close-circle'}
-                      size={18}
-                      color={activePlace.isOpen ? '#22c55e' : '#ef4444'}
-                    />
-                    <Text
-                      style={[
-                        styles.detailMetaText,
-                        activePlace.isOpen ? styles.detailMetaTextPositive : styles.detailMetaTextNegative,
-                      ]}
-                    >
-                      {activePlace.isOpen ? 'Открыто сейчас' : 'Закрыто'}
-                    </Text>
-                  </View>
-                </View>
-                <TouchableOpacity style={styles.detailActionButton} onPress={handleCloseDetails}>
-                  <Text style={styles.detailActionButtonText}>Вернуться к поиску</Text>
+                <Text style={styles.detailSubtitle}>{activePost.user}</Text>
+                <TouchableOpacity
+                  style={styles.detailAddressRow}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    handleCloseDetail();
+                    openInMap(activePost);
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color="#2563eb" />
+                  <Text style={styles.detailAddressText}>{activePost.address}</Text>
                 </TouchableOpacity>
+                <View style={styles.detailTags}>
+                  {activePost.tags.map(tag => (
+                    <View key={`${activePost.id}-detail-${tag}`} style={styles.detailTagChip}>
+                      <Text style={styles.detailTagText}>#{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+                <Text style={styles.detailDescription}>
+                  {activePost.reviews[0]?.comment ??
+                    'Здесь вы найдете лучшие впечатления города: маршруты, атмосферные пространства и события рядом.'}
+                </Text>
+                <View style={styles.detailMetaRow}>
+                  <TouchableOpacity
+                    style={styles.detailMeta}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!activePost) return;
+                      handleCloseDetail();
+                      triggerMapSearch(activePost.address);
+                    }}
+                  >
+                    <Ionicons name="map-outline" size={18} color="#1e293b" />
+                    <Text style={styles.detailMetaText}>На карте</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.detailMeta}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!activePost) return;
+                      handleCloseDetail();
+                      buildRoute(activePost);
+                    }}
+                  >
+                    <Ionicons name="navigate-outline" size={18} color="#1e293b" />
+                    <Text style={styles.detailMetaText}>Маршрут</Text>
+                  </TouchableOpacity>
+                  <View style={styles.detailMeta}>
+                    <Ionicons name="heart-outline" size={18} color="#FF2D55" />
+                    <Text style={styles.detailMetaText}>{`${formatCompactNumber(activePost.likes)} отметок`}</Text>
+                  </View>
+                </View>
               </View>
             </Pressable>
           )}
@@ -403,21 +374,32 @@ const styles = StyleSheet.create({
     backgroundColor: '#ffffff',
   },
   searchHeader: {
-    padding: 16,
-    paddingTop: 60,
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+    gap: 16,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 16,
+    borderRadius: 18,
     paddingHorizontal: 16,
-    height: 50,
-    backgroundColor: '#ffffff',
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.08)',
+    borderColor: 'rgba(12,23,42,0.12)',
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+    gap: 12,
+  },
+  searchContainerActive: {
+    backgroundColor: '#ffffff',
   },
   searchIcon: {
-    marginRight: 12,
+    marginRight: 4,
   },
   searchInput: {
     flex: 1,
@@ -428,156 +410,172 @@ const styles = StyleSheet.create({
   clearButton: {
     padding: 4,
   },
-  categoriesSection: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
   categoriesList: {
-    gap: 8,
+    gap: 10,
   },
-  categoryButton: {
+  categoryChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    marginRight: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(37, 99, 235, 0.12)',
     gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.1)',
-    backgroundColor: '#ffffff',
   },
-  categoryButtonActive: {
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    borderColor: '#007AFF',
+  categoryChipActive: {
+    backgroundColor: '#2563eb',
   },
-  categoryText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#0f172a',
+  categoryChipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#2563eb',
   },
-  categoryTextActive: {
-    color: '#007AFF',
+  categoryChipTextActive: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#ffffff',
   },
   resultsContainer: {
     flex: 1,
   },
-  resultsHeader: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
+  listContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 200,
+    gap: 20,
   },
-  resultsTitle: {
-    fontSize: 18,
-    marginBottom: 4,
-    color: '#0f172a',
-  },
-  searchQueryText: {
-    fontSize: 14,
-    opacity: 0.7,
-    color: '#475569',
-  },
-  resultsList: {
-    paddingHorizontal: 16,
-    paddingBottom: 100,
-    paddingTop: 8,
-    gap: 0,
-  },
-  placeCard: {
-    borderRadius: 20,
-    marginBottom: 24,
-    overflow: 'hidden',
+  post: {
     backgroundColor: 'rgba(255,255,255,0.55)',
+    borderRadius: 20,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(15, 23, 42, 0.12)',
+    borderColor: 'rgba(15,23,42,0.15)',
     shadowColor: '#0f172a',
     shadowOpacity: 0.12,
     shadowRadius: 20,
-    shadowOffset: { width: 0, height: 14 },
+    shadowOffset: { width: 0, height: 16 },
     elevation: 12,
   },
-  placeImage: {
+  image: {
     width: '100%',
-    height: 160,
+    height: 220,
   },
-  placeInfo: {
+  info: {
     padding: 16,
   },
-  placeHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  placeName: {
-    fontSize: 18,
-    flex: 1,
-    marginRight: 8,
-    color: '#0f172a',
-  },
-  ratingContainer: {
+  authorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 12,
+    marginBottom: 10,
   },
-  rating: {
-    fontSize: 14,
+  authorAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
+  authorDetails: {
+    flex: 1,
+  },
+  authorName: {
+    fontSize: 16,
     fontWeight: '600',
     color: '#0f172a',
   },
-  placeCategory: {
-    fontSize: 14,
-    opacity: 0.7,
-    marginBottom: 4,
+  authorHandle: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  placeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  place: {
+    fontSize: 18,
+    fontWeight: '600',
     color: '#0f172a',
   },
-  placeAddress: {
+  ratingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 184, 0, 0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  ratingText: {
     fontSize: 14,
-    opacity: 0.8,
-    marginBottom: 12,
-    color: '#0f172a',
+    fontWeight: '600',
+    color: '#B45309',
+  },
+  userCaption: {
+    color: '#777',
+    marginTop: 4,
+  },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  addressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
+    textDecorationLine: 'underline',
   },
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 12,
+    gap: 6,
+    marginTop: 8,
   },
   tagChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
     backgroundColor: 'rgba(59, 130, 246, 0.12)',
   },
   tagText: {
     fontSize: 12,
     fontWeight: '600',
     color: '#1d4ed8',
-    textTransform: 'lowercase',
   },
-  placeFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  statusText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
-  },
-  distanceContainer: {
+  actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    gap: 12,
   },
-  distance: {
-    fontSize: 12,
-    opacity: 0.7,
-    color: '#475569',
+  actionGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  likeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  actionButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+  },
+  favoriteButton: {
+    marginLeft: 'auto',
+  },
+  likeCount: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#333',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -590,34 +588,43 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
-    color: '#0f172a',
   },
   emptyText: {
     fontSize: 14,
     opacity: 0.7,
     textAlign: 'center',
     lineHeight: 20,
-    color: '#475569',
+  },
+  placeholderWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: -1,
   },
   placeholderContainer: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 40,
+    paddingVertical: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 6,
   },
   placeholderTitle: {
     fontSize: 20,
     marginTop: 16,
     marginBottom: 8,
     textAlign: 'center',
-    color: '#0f172a',
   },
   placeholderText: {
     fontSize: 16,
     opacity: 0.7,
     textAlign: 'center',
     lineHeight: 22,
-    color: '#475569',
   },
   detailOverlay: {
     flex: 1,
@@ -628,23 +635,23 @@ const styles = StyleSheet.create({
   },
   detailCard: {
     width: '100%',
-    maxWidth: 360,
-    borderRadius: 26,
+    maxWidth: 380,
+    borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: '#f8fafc',
     shadowColor: '#0f172a',
     shadowOpacity: 0.24,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 16 },
-    elevation: 18,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 20,
   },
   detailImage: {
     width: '100%',
-    height: 240,
+    height: 260,
   },
   detailContent: {
-    paddingHorizontal: 22,
-    paddingVertical: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 22,
     gap: 14,
   },
   detailHeader: {
@@ -654,10 +661,10 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   detailTitle: {
-    flex: 1,
     fontSize: 22,
     fontWeight: '700',
     color: '#0f172a',
+    flex: 1,
   },
   detailRating: {
     flexDirection: 'row',
@@ -678,12 +685,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1e293b',
   },
-  detailAddress: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 20,
+  detailAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
   },
-  detailTagRow: {
+  detailAddressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
+  detailTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
@@ -692,22 +708,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 14,
-    backgroundColor: 'rgba(59, 130, 246, 0.12)',
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
   },
   detailTagText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: '#1d4ed8',
-    textTransform: 'lowercase',
+  },
+  detailDescription: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#1f2937',
   },
   detailMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     gap: 12,
+    flexWrap: 'wrap',
   },
   detailMeta: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -722,23 +742,5 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#1e293b',
-  },
-  detailMetaTextPositive: {
-    color: '#15803d',
-  },
-  detailMetaTextNegative: {
-    color: '#dc2626',
-  },
-  detailActionButton: {
-    marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: 18,
-    backgroundColor: '#1d4ed8',
-    alignItems: 'center',
-  },
-  detailActionButtonText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#f8fafc',
   },
 });

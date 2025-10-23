@@ -380,6 +380,8 @@ const YandexMap = forwardRef<YandexMapHandle, YandexMapProps>(({
   );
 });
 
+YandexMap.displayName = 'YandexMap';
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
