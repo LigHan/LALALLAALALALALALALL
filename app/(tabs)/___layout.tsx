@@ -6,30 +6,12 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-type IoniconName = ComponentProps<typeof Ionicons>['name'];
-
-type TabConfig = {
-  name: string;
-  label: string;
-  iconFocused: IoniconName;
-  iconDefault: IoniconName;
-  position: 'left' | 'center' | 'right';
-  variation?: 'primary';
-};
-
-const TAB_CONFIG: TabConfig[] = [
+const TAB_CONFIG = [
   {
     name: 'index',
     label: 'Главная',
     iconFocused: 'home',
     iconDefault: 'home-outline',
-    position: 'left'
-  },
-  {
-    name: 'map',
-    label: 'Карта',
-    iconFocused: 'map',
-    iconDefault: 'map-outline',
     position: 'left'
   },
   {
@@ -65,7 +47,6 @@ export default function TabLayout() {
       tabBar={props => <FloatingTabBar {...props} />}
     >
       <Tabs.Screen name="index" />
-      <Tabs.Screen name="map" />
       <Tabs.Screen name="search" />
       <Tabs.Screen name="nearby" />
       <Tabs.Screen name="profile" />
@@ -77,13 +58,13 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const renderTabButton = (tab: TabConfig) => {
+  const renderTabButton = (tab: typeof TAB_CONFIG[number]) => {
     const route = state.routes.find(r => r.name === tab.name);
     if (!route) return null;
 
     const routeIndex = state.routes.findIndex(r => r.key === route.key);
     const isFocused = state.index === routeIndex;
-    const iconName: IoniconName = isFocused ? tab.iconFocused : tab.iconDefault;
+    const iconName = isFocused ? tab.iconFocused : tab.iconDefault;
 
     const onPress = () => {
       const event = navigation.emit({
@@ -174,7 +155,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           <View style={styles.islandOverlay} />
           <View style={styles.islandContent}>
             {/* Левая группа: Главная */}
-            <View style={styles.leftGroup}>
+            <View style={styles.iconGroup}>
               {leftTabs.map(renderTabButton)}
             </View>
 
@@ -184,7 +165,7 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             </View>
 
             {/* Правая группа: Профиль и Рядом */}
-            <View style={styles.rightGroup}>
+            <View style={styles.iconGroup}>
               {rightTabs.map(renderTabButton)}
             </View>
           </View>
@@ -227,34 +208,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingVertical: 12,
     gap: 8,
   },
-  leftGroup: {
+  iconGroup: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    gap: 12,
     flex: 1,
-    gap: 8,
   },
   centerGroup: {
+    flex: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 1,
-    marginHorizontal: 8,
-  },
-  rightGroup: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    flex: 1,
-    gap: 8,
   },
   iconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -265,24 +237,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 24,
+    borderRadius: 25,
     paddingHorizontal: 20,
     paddingVertical: 12,
-    minWidth: 130,
+    minWidth: 120,
     backgroundColor: 'rgba(255,255,255,0.9)',
     borderWidth: 1,
     borderColor: 'rgba(12,23,42,0.12)',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
   },
   primarySearchButton: {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
-    shadowColor: '#007AFF',
-    shadowOpacity: 0.3,
   },
   searchButtonActive: {
     backgroundColor: '#0056CC',

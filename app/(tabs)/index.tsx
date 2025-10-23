@@ -33,10 +33,6 @@ export default function FeedScreen() {
       prev.map(p => (p.id === id ? { ...p, likes: p.likes + 1 } : p))
     );
   };
-  const handleComment = (id: string) => {
-    // TODO: navigate to comments or open modal
-    console.log(`comment on ${id}`);
-  };
   const handleFavorite = (id: string) => {
     // TODO: persist favorites or show feedback
     console.log(`favorite ${id}`);
@@ -240,15 +236,6 @@ export default function FeedScreen() {
                 >
                   <Ionicons name="heart-outline" size={24} color="#FF2D55" />
                   <Text style={styles.likeCount}>{item.likes}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={(event: GestureResponderEvent) => {
-                    event.stopPropagation();
-                    handleComment(item.id);
-                  }}
-                  style={styles.actionButton}
-                >
-                  <Ionicons name="chatbubble-ellipses-outline" size={24} color="#1C1C1E" />
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
