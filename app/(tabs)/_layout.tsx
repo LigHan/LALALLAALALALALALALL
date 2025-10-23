@@ -6,6 +6,8 @@ import type { ComponentProps } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { triggerMapSearch } from '@/lib/map-search';
+
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
 type TabConfig = {
@@ -76,6 +78,8 @@ export default function TabLayout() {
 function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const currentRouteName = state.routes[state.index]?.name;
+  const isMapActive = currentRouteName === 'map';
 
   const renderTabButton = (tab: TabConfig) => {
     const route = state.routes.find(r => r.name === tab.name);
@@ -91,6 +95,11 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         target: route.key,
         canPreventDefault: true,
       });
+
+      if (tab.name === 'search' && isMapActive) {
+        triggerMapSearch();
+        return;
+      }
 
       if (!isFocused && !event.defaultPrevented) {
         if (tab.name === 'profile') {
@@ -169,9 +178,9 @@ function FloatingTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   return (
     <View style={[styles.tabBarContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      <View style={styles.islandShadow}>
-        <BlurView intensity={70} tint="light" style={styles.islandBlur}>
-          <View style={styles.islandOverlay} />
+      <View style={[styles.islandShadow, isMapActive && styles.mapIslandShadow]}>
+        <BlurView intensity={isMapActive ? 35 : 70} tint="light" style={styles.islandBlur}>
+          <View style={[styles.islandOverlay, isMapActive && styles.mapIslandOverlay]} />
           <View style={styles.islandContent}>
             {/* Левая группа: Главная */}
             <View style={styles.leftGroup}>
@@ -215,6 +224,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 18 },
     elevation: 16,
   },
+  mapIslandShadow: {
+    shadowOpacity: 0.08,
+    shadowRadius: 18,
+    elevation: 10,
+  },
   islandBlur: {
     borderRadius: 40,
     overflow: 'hidden',
@@ -222,6 +236,9 @@ const styles = StyleSheet.create({
   islandOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(255,255,255,0.55)',
+  },
+  mapIslandOverlay: {
+    backgroundColor: 'rgba(255,255,255,0.32)',
   },
   islandContent: {
     flexDirection: 'row',

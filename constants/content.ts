@@ -34,6 +34,7 @@ export type Post = {
   userAvatar: string;
   userHandle: string;
   place: string;
+  address: string;
   image: string;
   gallery: string[];
   likes: number;
@@ -54,6 +55,7 @@ export const posts: Post[] = [
     userAvatar: 'https://images.unsplash.com/photo-1520880867055-1e30d1cb001c?auto=format&fit=crop&w=400&q=80',
     userHandle: 'scherbakovpark',
     place: 'Парк Щербакова',
+    address: 'ул. Университетская, 14, Донецк',
     image: 'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
     gallery: [
       'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
@@ -107,6 +109,7 @@ export const posts: Post[] = [
     userAvatar: 'https://images.unsplash.com/photo-1528901166007-3784c7dd3653?auto=format&fit=crop&w=400&q=80',
     userHandle: 'vdnhofficial',
     place: 'ВДНХ',
+    address: 'просп. Мира, 119, Москва',
     image: 'https://picsum.photos/600/400?2',
     gallery: [
       'https://picsum.photos/600/400?2',
@@ -154,6 +157,7 @@ export const posts: Post[] = [
     userAvatar: 'https://images.unsplash.com/photo-1505843864240-89971962f889?auto=format&fit=crop&w=400&q=80',
     userHandle: 'redsquare_official',
     place: 'Красная площадь',
+    address: 'Красная площадь, Москва',
     image: 'https://picsum.photos/600/400?3',
     gallery: [
       'https://picsum.photos/600/400?3',

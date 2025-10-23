@@ -14,6 +14,7 @@ import {
 import { useRouter } from 'expo-router';
 
 import { posts as sourcePosts, stories, type Post, type Story } from '@/constants/content';
+import { triggerMapSearch } from '@/lib/map-search';
 
 export default function FeedScreen() {
   const router = useRouter();
@@ -37,9 +38,9 @@ export default function FeedScreen() {
     // TODO: persist favorites or show feedback
     console.log(`favorite ${id}`);
   };
-  const handleOpenMap = (id: string) => {
-    // TODO: navigate to map detail
-    console.log(`open map for ${id}`);
+  const handleOpenMap = (post: Post) => {
+    router.push('/map');
+    triggerMapSearch(post.address);
   };
   const handleDownload = (id: string) => {
     // TODO: trigger download or share sheet
@@ -217,6 +218,17 @@ export default function FeedScreen() {
                 </TouchableOpacity>
               </View>
               <Text style={styles.userCaption}>от {item.user}</Text>
+              <TouchableOpacity
+                style={styles.addressRow}
+                onPress={(event: GestureResponderEvent) => {
+                  event.stopPropagation();
+                  handleOpenMap(item);
+                }}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="location-outline" size={16} color="#2563eb" />
+                <Text style={styles.addressText}>{item.address}</Text>
+              </TouchableOpacity>
               <View style={styles.tagRow}>
                 {item.tags.map(tag => (
                   <View key={`${item.id}-${tag}`} style={styles.tagChip}>
@@ -240,7 +252,7 @@ export default function FeedScreen() {
                 <TouchableOpacity
                   onPress={(event: GestureResponderEvent) => {
                     event.stopPropagation();
-                    handleOpenMap(item.id);
+                    handleOpenMap(item);
                   }}
                   style={styles.actionButton}
                 >
@@ -387,6 +399,20 @@ export default function FeedScreen() {
                   {detailPost.reviews[0]?.comment ??
                     'Здесь вы найдете лучшие впечатления города: маршруты, атмосферные пространства и события рядом.'}
                 </Text>
+                <TouchableOpacity
+                  style={styles.detailAddressRow}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    if (!detailPost) {
+                      return;
+                    }
+                    setDetailVisible(false);
+                    handleOpenMap(detailPost);
+                  }}
+                >
+                  <Ionicons name="location-outline" size={18} color="#2563eb" />
+                  <Text style={styles.detailAddressText}>{detailPost.address}</Text>
+                </TouchableOpacity>
                 <View style={styles.detailMetaRow}>
                   <TouchableOpacity
                     style={styles.detailMeta}
@@ -403,6 +429,20 @@ export default function FeedScreen() {
                     <Text style={styles.detailMetaText}>
                       {detailPost.workingHours[0]?.value ?? 'Нет данных'}
                     </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.detailMeta}
+                    activeOpacity={0.85}
+                    onPress={() => {
+                      if (!detailPost) {
+                        return;
+                      }
+                      setDetailVisible(false);
+                      handleOpenMap(detailPost);
+                    }}
+                  >
+                    <Ionicons name="map-outline" size={18} color="#1e293b" />
+                    <Text style={styles.detailMetaText}>На карте</Text>
                   </TouchableOpacity>
                   <View style={styles.detailMeta}>
                     <Ionicons name="heart-outline" size={18} color="#FF2D55" />
@@ -549,6 +589,17 @@ const styles = StyleSheet.create({
     color: '#B45309',
   },
   userCaption: { color: '#777', marginTop: 4 },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 6,
+  },
+  addressText: {
+    fontSize: 14,
+    color: '#2563eb',
+    textDecorationLine: 'underline',
+  },
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -738,11 +789,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     color: '#1f2937',
   },
+  detailAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+  },
+  detailAddressText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1d4ed8',
+  },
   detailMetaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 16,
+    justifyContent: 'flex-start',
+    gap: 12,
+    flexWrap: 'wrap',
   },
   detailMeta: {
     flexDirection: 'row',
