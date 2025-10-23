@@ -38,10 +38,10 @@ const TAB_CONFIG: TabConfig[] = [
     iconFocused: 'search',
     iconDefault: 'search-outline', 
     position: 'center',
-    variation: 'primary'
+    variation: 'primary'  
   },
   {
-    name: 'login',
+    name: 'profile',
     label: 'Профиль',
     iconFocused: 'person',
     iconDefault: 'person-outline',

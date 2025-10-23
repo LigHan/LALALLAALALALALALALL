@@ -37,6 +37,8 @@ export type Post = {
   image: string;
   gallery: string[];
   likes: number;
+  totalLikes: number;
+  followers: number;
   rating: number;
   tags: string[];
   bio: string;
@@ -68,6 +70,8 @@ export const posts: Post[] = [
       'https://upload.wikimedia.org/wikipedia/commons/6/62/Donetsk_Scherbakov_Park.jpg',
     ],
     likes: 12,
+    totalLikes: 1480,
+    followers: 26800,
     rating: 4.8,
     tags: ['Парк', 'Семейный отдых', 'Озеро'],
     bio: 'Парк Щербакова — зелёный оазис для прогулок, занятий спортом и семейного отдыха. Здесь проходят фестивали, концерты и кинопоказы под открытым небом.',
@@ -113,6 +117,8 @@ export const posts: Post[] = [
       'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
     ],
     likes: 7,
+    totalLikes: 2140,
+    followers: 42150,
     rating: 4.5,
     tags: ['Культура', 'Выставки', 'АРТ'],
     bio: 'ВДНХ — крупнейший выставочный комплекс, объединяющий павильоны, музеи и фестивальные площадки. Мы рассказываем о главных событиях и новинках.',
@@ -158,6 +164,8 @@ export const posts: Post[] = [
       'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?auto=format&fit=crop&w=1200&q=80',
     ],
     likes: 25,
+    totalLikes: 5630,
+    followers: 98200,
     rating: 4.9,
     tags: ['История', 'Главные места', 'События'],
     bio: 'Официальный гид по Красной площади. Делимся историей, событиями и авторскими маршрутами по сердцу столицы.',

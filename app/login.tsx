@@ -2,6 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
+  Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +14,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
+import { posts } from '@/constants/content';
+import { setUserSession, type UserSession } from '@/lib/user-session';
 
 const THEME = {
   primary: '#2563eb',
@@ -33,6 +38,57 @@ export default function AuthScreen() {
 
   const isRegister = mode === 'register';
   const isCompany = accountType === 'company';
+
+  const sampleFavorites = useMemo(() => posts.slice(0, 3).map(post => post.id), []);
+  const sampleLiked = useMemo(() => posts.slice(1, 4).map(post => post.id), []);
+  const sampleFollowing = useMemo(
+    () =>
+      posts.slice(0, 5).map(post => ({
+        id: post.id,
+        name: post.user,
+        handle: post.userHandle,
+        avatar: post.userAvatar,
+        description: post.bio,
+      })),
+    []
+  );
+
+  const canSubmit =
+    email.trim().length > 0 &&
+    password.trim().length > 0 &&
+    (!isRegister || (isCompany ? companyName.trim().length > 0 : name.trim().length > 0));
+
+  const handleSubmit = () => {
+    if (!canSubmit) {
+      Alert.alert('Пожалуйста, заполните все поля', 'Укажите почту, пароль и имя, чтобы продолжить.');
+      return;
+    }
+
+    Keyboard.dismiss();
+
+    const primaryName =
+      (isRegister ? (isCompany ? companyName.trim() : name.trim()) : name.trim()) ||
+      email.trim().split('@')[0] ||
+      'Гость';
+
+    const normalizedHandle =
+      email.trim().split('@')[0]?.replace(/[^a-z0-9_]/gi, '').toLowerCase() || `user${Date.now()}`;
+
+    const session: UserSession = {
+      id: `user-${Date.now()}`,
+      name: primaryName,
+      email: email.trim(),
+      handle: normalizedHandle,
+      avatar: `https://i.pravatar.cc/200?u=${encodeURIComponent(email.trim() || primaryName)}`,
+      accountType,
+      favorites: sampleFavorites,
+      liked: sampleLiked,
+      following: sampleFollowing,
+    };
+
+    setUserSession(session);
+    router.replace('/profile');
+  };
 
   return (
     <>
@@ -66,7 +122,10 @@ export default function AuthScreen() {
               </Text>
             </View>
 
-            {isRegister && (
+            <View style={styles.accountTypeWrapper}>
+              <Text style={styles.accountTypeLabel}>
+                {isRegister ? 'Тип аккаунта' : 'Войти как'}
+              </Text>
               <View style={styles.accountTypeRow}>
                 <TouchableOpacity
                   style={[styles.accountTypeChip, accountType === 'user' && styles.accountTypeChipActive]}
@@ -107,7 +166,7 @@ export default function AuthScreen() {
                   </Text>
                 </TouchableOpacity>
               </View>
-            )}
+            </View>
 
             {isRegister && !isCompany && (
               <View style={styles.fieldGroup}>
@@ -167,7 +226,11 @@ export default function AuthScreen() {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.primaryButton} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={[styles.primaryButton, !canSubmit && styles.primaryButtonDisabled]}
+              activeOpacity={0.85}
+              onPress={handleSubmit}
+            >
               <Text style={styles.primaryButtonText}>{isRegister ? 'Зарегистрироваться' : 'Войти'}</Text>
             </TouchableOpacity>
 
@@ -296,6 +359,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 8,
   },
+  primaryButtonDisabled: {
+    opacity: 0.5,
+  },
   primaryButtonText: {
     color: '#fff',
     fontSize: 16,
@@ -374,6 +440,16 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(37, 99, 235, 0.08)',
     borderRadius: 20,
     padding: 6,
+  },
+  accountTypeWrapper: {
+    gap: 8,
+  },
+  accountTypeLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.4,
+    color: THEME.accent,
+    textTransform: 'uppercase',
   },
   accountTypeChip: {
     flex: 1,

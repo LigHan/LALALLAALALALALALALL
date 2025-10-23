@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from 'react';
 import {
   FlatList,
   Image,
@@ -18,6 +18,8 @@ import {
 
 import { posts } from '@/constants/content';
 
+type IoniconName = ComponentProps<typeof Ionicons>['name'];
+
 export default function CompanyScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id?: string }>();
@@ -27,6 +29,7 @@ export default function CompanyScreen() {
   const [isGalleryVisible, setGalleryVisible] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
   const [isContactVisible, setContactVisible] = useState(false);
+  const [isReviewsVisible, setReviewsVisible] = useState(false);
   const galleryRef = useRef<FlatList<string>>(null);
   const isWeb = Platform.OS === 'web';
   const galleryGap = 0;
@@ -44,6 +47,10 @@ export default function CompanyScreen() {
     console.log(`follow ${company.userHandle}`);
   };
 
+  const handleViewReviews = () => {
+    setReviewsVisible(true);
+  };
+
   const handleContact = (value: string) => {
     if (value.startsWith('+')) {
       Linking.openURL(`tel:${value.replace(/\s+/g, '')}`).catch(() => undefined);
@@ -58,6 +65,15 @@ export default function CompanyScreen() {
     setGalleryIndex(index);
     setGalleryVisible(true);
   };
+
+  const companyStats = useMemo(
+    () =>
+      [
+        { label: 'Подписчиков', value: formatNumber(company.followers), icon: 'people-outline' as IoniconName },
+        { label: 'Всего лайков', value: formatNumber(company.totalLikes), icon: 'heart' as IoniconName },
+      ],
+    [company.followers, company.totalLikes]
+  );
 
   useEffect(() => {
     if (isGalleryVisible) {
@@ -80,6 +96,15 @@ export default function CompanyScreen() {
           <Image source={{ uri: company.userAvatar }} style={styles.avatar} />
           <Text style={styles.name}>{company.user}</Text>
           <Text style={styles.handle}>@{company.userHandle}</Text>
+          <View style={styles.statsRow}>
+            {companyStats.map(stat => (
+              <View key={stat.label} style={styles.statCard}>
+                <Ionicons name={stat.icon} size={18} color="#2563eb" />
+                <Text style={styles.statValue}>{stat.value}</Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
+          </View>
           <View style={styles.tagRow}>
             {company.tags.map(tag => (
               <View key={`${company.id}-${tag}`} style={styles.tagChip}>
@@ -87,7 +112,7 @@ export default function CompanyScreen() {
               </View>
             ))}
           </View>
-          <View style={styles.actions}>
+          <View style={styles.actionsRow}>
             <TouchableOpacity style={styles.followButton} onPress={handleFollow} activeOpacity={0.85}>
               <Ionicons name="add-circle-outline" size={18} color="#fff" />
               <Text style={styles.followButtonText}>Отслеживать</Text>
@@ -131,6 +156,32 @@ export default function CompanyScreen() {
                 <Image source={{ uri }} style={styles.galleryImage} />
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Отзывы посетителей</Text>
+          <View style={styles.reviewsPreview}>
+            {company.reviews.slice(0, 2).map(review => (
+              <View key={review.id} style={styles.reviewCard}>
+                <View style={styles.reviewHeader}>
+                  <Ionicons name="person-circle-outline" size={20} color="#2563eb" />
+                  <Text style={styles.reviewAuthor}>{review.author}</Text>
+                  <View style={styles.reviewRating}>
+                    <Ionicons name="star" size={14} color="#f59e0b" />
+                    <Text style={styles.reviewRatingText}>{review.rating.toFixed(1)}</Text>
+                  </View>
+                </View>
+                <Text style={styles.reviewComment}>{review.comment}</Text>
+                <Text style={styles.reviewDate}>{review.date}</Text>
+              </View>
+            ))}
+            {company.reviews.length > 2 && (
+              <TouchableOpacity style={styles.reviewMoreButton} onPress={handleViewReviews} activeOpacity={0.85}>
+                <Text style={styles.reviewMoreText}>Смотреть все отзывы</Text>
+                <Ionicons name="chevron-forward" size={16} color="#2563eb" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
@@ -191,6 +242,33 @@ export default function CompanyScreen() {
           </View>
         </Pressable>
       </Modal>
+
+      <Modal visible={isReviewsVisible} transparent animationType="fade" onRequestClose={() => setReviewsVisible(false)}>
+        <Pressable style={styles.contactModalOverlay} onPress={() => setReviewsVisible(false)}>
+          <View style={[styles.contactModalContent, styles.reviewsModalContent]}>
+            <Text style={styles.contactModalTitle}>Отзывы о {company.place}</Text>
+            <ScrollView contentContainerStyle={styles.reviewsModalList} showsVerticalScrollIndicator={false}>
+              {company.reviews.map(review => (
+                <View key={`${company.id}-modal-${review.id}`} style={styles.reviewCard}>
+                  <View style={styles.reviewHeader}>
+                    <Ionicons name="person-circle-outline" size={20} color="#2563eb" />
+                    <Text style={styles.reviewAuthor}>{review.author}</Text>
+                    <View style={styles.reviewRating}>
+                      <Ionicons name="star" size={14} color="#f59e0b" />
+                      <Text style={styles.reviewRatingText}>{review.rating.toFixed(1)}</Text>
+                    </View>
+                  </View>
+                  <Text style={styles.reviewComment}>{review.comment}</Text>
+                  <Text style={styles.reviewDate}>{review.date}</Text>
+                </View>
+              ))}
+            </ScrollView>
+            <TouchableOpacity style={styles.contactModalClose} onPress={() => setReviewsVisible(false)} activeOpacity={0.85}>
+              <Text style={styles.contactModalCloseText}>Закрыть</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
     </>
   );
 }
@@ -225,6 +303,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#64748b',
   },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'stretch',
+    gap: 18,
+    width: '100%',
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  statCard: {
+    flex: 1,
+    minWidth: 120,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 18,
+    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#64748b',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
   tagRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -242,11 +351,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1d4ed8',
   },
-  actions: {
+  actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     marginTop: 12,
+    width: '100%',
   },
   followButton: {
     flexDirection: 'row',
@@ -305,6 +415,62 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#0f172a',
+  },
+  reviewsPreview: {
+    gap: 12,
+  },
+  reviewCard: {
+    backgroundColor: '#f8fafc',
+    borderRadius: 18,
+    padding: 16,
+    gap: 10,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.05,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 4,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reviewAuthor: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0f172a',
+  },
+  reviewRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 'auto',
+  },
+  reviewRatingText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#b45309',
+  },
+  reviewComment: {
+    fontSize: 14,
+    color: '#1f2937',
+    lineHeight: 20,
+  },
+  reviewDate: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  reviewMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  reviewMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563eb',
   },
   description: {
     fontSize: 15,
@@ -385,6 +551,13 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 16,
   },
+  reviewsModalContent: {
+    maxHeight: 480,
+  },
+  reviewsModalList: {
+    gap: 16,
+    paddingBottom: 12,
+  },
   contactModalTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -423,3 +596,7 @@ const styles = StyleSheet.create({
     color: '#1d4ed8',
   },
 });
+
+function formatNumber(value: number) {
+  return value.toLocaleString('ru-RU');
+}

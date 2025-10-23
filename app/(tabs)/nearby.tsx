@@ -23,6 +23,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const NEARBY_PLACES = [
   {
     id: '1',
+    categoryId: 'park',
     name: 'Парк Горького',
     category: 'Парк',
     address: 'ул. Крымский Вал, 9',
@@ -39,6 +40,7 @@ const NEARBY_PLACES = [
   },
   {
     id: '2',
+    categoryId: 'cafe',
     name: 'Кофейня "Уют"',
     category: 'Кафе',
     address: 'ул. Арбат, 25',
@@ -55,6 +57,7 @@ const NEARBY_PLACES = [
   },
   {
     id: '3',
+    categoryId: 'museum',
     name: 'Музей современного искусства',
     category: 'Музей',
     address: 'ул. Петровка, 25',
@@ -71,6 +74,7 @@ const NEARBY_PLACES = [
   },
   {
     id: '4',
+    categoryId: 'shop',
     name: 'Торговый центр "Европейский"',
     category: 'Шоппинг',
     address: 'пл. Киевского Вокзала, 2',
@@ -87,6 +91,7 @@ const NEARBY_PLACES = [
   },
   {
     id: '5',
+    categoryId: 'restaurant',
     name: 'Ресторан "Белый лебедь"',
     category: 'Ресторан',
     address: 'ул. Тверская, 15',
@@ -125,13 +130,10 @@ export default function NearbyScreen() {
     });
   };
 
-  const filteredPlaces = selectedCategory === 'all' 
-    ? NEARBY_PLACES 
-    : NEARBY_PLACES.filter(place => 
-        place.category.toLowerCase().includes(
-          CATEGORY_FILTERS.find(cat => cat.id === selectedCategory)?.name.toLowerCase() || ''
-        )
-      );
+  const filteredPlaces =
+    selectedCategory === 'all'
+      ? NEARBY_PLACES
+      : NEARBY_PLACES.filter(place => place.categoryId === selectedCategory);
 
   const handleCategorySelect = (categoryId: string) => {
     animateSelection();
@@ -381,6 +383,7 @@ const styles = StyleSheet.create({
   placesList: {
     paddingHorizontal: 16,
     paddingBottom: 100,
+    paddingTop: 8,
   },
   placesCount: {
     fontSize: 16,
@@ -389,20 +392,21 @@ const styles = StyleSheet.create({
     color: '#475569',
   },
   placeCard: {
-    borderRadius: 16,
-    marginBottom: 16,
+    borderRadius: 20,
+    marginBottom: 24,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    borderWidth: 2,
-    borderColor: 'transparent',
-    backgroundColor: '#ffffff',
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 16 },
+    elevation: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(15, 23, 42, 0.12)',
+    backgroundColor: 'rgba(255,255,255,0.55)',
   },
   placeCardSelected: {
     borderColor: '#007AFF',
+    borderWidth: 2,
   },
   placeImage: {
     width: '100%',
